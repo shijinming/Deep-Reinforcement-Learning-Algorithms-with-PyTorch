@@ -28,6 +28,14 @@ class VEC_Environment(gym.Env):
         self.trials = 100
         self.max_episode_steps = 100
         self.id = "VEC"
+        self.vehicles = []
+        self.vehicle_id = 0
+        self.velocity = [50,60,70,80,90,100,110,120]
+        self.slot = 10 # ms
+        self.bandwidth = 10 # MHz
+        self.snr_ref = 0 # reference SNR, which is used to compute rate by B*log2(1+snr_ref*d^-a) 
+        self.maxL = 1000 # max length of RSU range 
+        self.vehicle_F =       
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -59,13 +67,11 @@ class VEC_Environment(gym.Env):
         desired_new_state = self.calculate_desired_new_state(action)
         self.next_state = [self.location_to_state(self.current_user_location), self.desired_goal[0]]
 
-        if self.user_at_goal_location():
-            self.reward = self.reward_for_achieving_goal
+
+        if self.step_count >= self.max_episode_steps: 
             self.done = True
-        else:
-            self.reward = self.step_reward_for_not_achieving_goal
-            if self.step_count >= self.max_episode_steps: self.done = True
-            else: self.done = False
+        else: 
+            self.done = False
         self.achieved_goal = self.next_state[:self.state_only_dimension]
         self.state = self.next_state
         self.s = np.array(self.next_state[:self.state_only_dimension])
@@ -80,3 +86,29 @@ class VEC_Environment(gym.Env):
         else:
             reward = self.step_reward_for_not_achieving_goal
         return reward
+
+    def add_vehicle(self):
+        v_f = vehicle_F
+        v_p = 0
+        v_v = np.random.choice(self.velocity)
+        v_load = 0
+        v_reward = 0
+        v_taskNum = 0
+        vehicles.append([self.vehicle_id, v_f, v_p, v_v, v_load, v_reward, v_taskNum])
+        vehicle_id+=1
+
+    def generate_tasks(self):
+        for v in vehicles:
+            data_size = random.randint()
+            compute_size = random.randint()
+            max_delay = random.randint()
+            self.vehicles[v].append([data_size, compute_size, max_delay, price])
+
+    def compute_delay(self, task, offload_v):
+        pass
+
+    def move_vehicles(self):
+        for v in range(len(vehicles)):
+            vehicles[i][2]+=vehicles[i][3]*slot/1000.0
+            if vehicles[i][2] > maxL:
+                vehicles.pop(i)
