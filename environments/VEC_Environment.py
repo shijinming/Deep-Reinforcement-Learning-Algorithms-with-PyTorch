@@ -34,8 +34,9 @@ class VEC_Environment(gym.Env):
         self.slot = 10 # ms
         self.bandwidth = 10 # MHz
         self.snr_ref = 0 # reference SNR, which is used to compute rate by B*log2(1+snr_ref*d^-a) 
-        self.maxL = 1000 # max length of RSU range 
-        self.vehicle_F =       
+        self.maxL = 10000 #m, max length of RSU range 
+        self.vehicle_F = [2,3,4,5]  #GHz
+        self.RSU_F = 20  #GHz
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -67,7 +68,6 @@ class VEC_Environment(gym.Env):
         desired_new_state = self.calculate_desired_new_state(action)
         self.next_state = [self.location_to_state(self.current_user_location), self.desired_goal[0]]
 
-
         if self.step_count >= self.max_episode_steps: 
             self.done = True
         else: 
@@ -88,13 +88,11 @@ class VEC_Environment(gym.Env):
         return reward
 
     def add_vehicle(self):
-        v_f = vehicle_F
+        v_f = np.random.choice(vehicle_F)
         v_p = 0
         v_v = np.random.choice(self.velocity)
-        v_load = 0
-        v_reward = 0
-        v_taskNum = 0
-        vehicles.append([self.vehicle_id, v_f, v_p, v_v, v_load, v_reward, v_taskNum])
+        tasks = []
+        vehicles.append([self.vehicle_id, v_f, v_p, v_v, tasks])
         vehicle_id+=1
 
     def generate_tasks(self):
@@ -102,7 +100,8 @@ class VEC_Environment(gym.Env):
             data_size = random.randint()
             compute_size = random.randint()
             max_delay = random.randint()
-            self.vehicles[v].append([data_size, compute_size, max_delay, price])
+            t_total = 0
+            self.vehicles[v][4].append([data_size, compute_size, max_t, price, t_total])
 
     def compute_delay(self, task, offload_v):
         pass
