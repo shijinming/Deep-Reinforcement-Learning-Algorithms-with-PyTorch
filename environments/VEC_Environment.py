@@ -30,12 +30,12 @@ class VEC_Environment(gym.Env):
         self.id = "VEC"
         self.vehicles = []
         self.vehicle_id = 0
-        self.velocity = [50,60,70,80,90,100,110,120]
+        self.velocity = range(60,110)
         self.slot = 10 # ms
         self.bandwidth = 10 # MHz
         self.snr_ref = 0 # reference SNR, which is used to compute rate by B*log2(1+snr_ref*d^-a) 
         self.maxL = 10000 #m, max length of RSU range 
-        self.vehicle_F = [2,3,4,5]  #GHz
+        self.vehicle_F = range(2,6)  #GHz
         self.RSU_F = 20  #GHz
 
     def seed(self, seed=None):
@@ -75,6 +75,8 @@ class VEC_Environment(gym.Env):
         self.achieved_goal = self.next_state[:self.state_only_dimension]
         self.state = self.next_state
         self.s = np.array(self.next_state[:self.state_only_dimension])
+        if np.random.choice(range(100)) < 20:
+            self.add_vehicle()
 
         return self.s, self.reward, self.done, {}
 
