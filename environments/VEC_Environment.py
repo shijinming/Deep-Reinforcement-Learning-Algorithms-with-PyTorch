@@ -14,14 +14,16 @@ class VEC_Environment(gym.Env):
     environment_name = "Vehicular Edge Computing"
 
     def __init__(self):
-        self.numVehicles = 
+        self.numVehicles = 500
+        self.snr_level=100
+        self.freq_level=100
         self.actions = set(range(4))
         self.reward_for_achieving_goal = (self.grid_width + self.grid_height) * 3.0
         self.step_reward_for_not_achieving_goal = -1.0
         self.state_only_dimension = 1
-        self.num_possible_states = self.grid_height * self.grid_width
-        self.action_space = spaces.Discrete(4)
-        self.observation_space = spaces.Discrete(self.num_possible_states)
+        self.possible_states = [snr_level]*(numVehicles+1) + [freq_level]*(numVehicles+1) 
+        self.action_space = spaces.Dict({"device":spaces.Discrete(self.numVehicles+1), "cost":spaces.Discrete(10)})
+        self.observation_space = spaces.MultiDiscrete(self.possible_states)
 
         self.seed()
         self.reward_threshold = 0.0
@@ -31,12 +33,13 @@ class VEC_Environment(gym.Env):
         self.vehicles = []
         self.vehicle_id = 0
         self.velocity = range(60,110)
-        self.slot = 10 # ms
-        self.bandwidth = 10 # MHz
+        self.slot = 100 # ms
+        self.bandwidth = 6 # MHz
         self.snr_ref = 0 # reference SNR, which is used to compute rate by B*log2(1+snr_ref*d^-a) 
         self.maxL = 10000 #m, max length of RSU range 
         self.vehicle_F = range(2,6)  #GHz
         self.RSU_F = 20  #GHz
+        self.tasks = []
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -44,9 +47,6 @@ class VEC_Environment(gym.Env):
 
     def reset(self):
         """Resets the environment and returns the start state"""
-        self.grid = self.create_grid()
-        self.place_goal()
-        self.place_agent()
         self.desired_goal = [self.location_to_state(self.current_goal_location)]
         self.achieved_goal = [self.location_to_state(self.current_user_location)]
         self.step_count = 0
@@ -75,7 +75,7 @@ class VEC_Environment(gym.Env):
         self.achieved_goal = self.next_state[:self.state_only_dimension]
         self.state = self.next_state
         self.s = np.array(self.next_state[:self.state_only_dimension])
-        if np.random.choice(range(100)) < 20:
+        if np.random.choice(range(100)) < 10:
             self.add_vehicle()
 
         return self.s, self.reward, self.done, {}
@@ -103,10 +103,12 @@ class VEC_Environment(gym.Env):
             compute_size = random.randint()
             max_delay = random.randint()
             t_total = 0
-            self.vehicles[v][4].append([data_size, compute_size, max_t, price, t_total])
+            self.tasks.append([data_size, compute_size, max_t, source])
 
-    def compute_delay(self, task, offload_v):
-        pass
+    def compute_delay(self, task, action):
+        delay = 0
+        if task[3]==action["device"]:
+            delay += task[1]/self.vehicles[action["device"]][]
 
     def move_vehicles(self):
         for v in range(len(vehicles)):
