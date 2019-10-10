@@ -15,6 +15,7 @@ class VEC_Environment(gym.Env):
 
     def __init__(self):
         self.numVehicles = 500
+        self.vehicle_count = 0
         self.snr_level=100
         self.freq_level=100
         self.actions = set(range(4))
@@ -32,7 +33,6 @@ class VEC_Environment(gym.Env):
         self.max_episode_steps = 100
         self.id = "VEC"
         self.vehicles = []
-        self.vehicle_id = 0
         self.velocity = range(60,110)
         self.slot = 100 # ms
         self.bandwidth = 6 # MHz
@@ -84,12 +84,13 @@ class VEC_Environment(gym.Env):
         return reward
 
     def add_vehicle(self):
+        if self.vehicle_count > self.numVehicles:
+            return
         v_f = np.random.choice(vehicle_F)
         v_p = 0
         v_v = np.random.choice(self.velocity)
         tasks = []
-        vehicles.append([self.vehicle_id, v_f, v_p, v_v, tasks])
-        vehicle_id+=1
+        vehicles.append([self.vehicle_count, v_f, v_p, tasks])
 
     def generate_tasks(self):
         for v in vehicles:
@@ -103,6 +104,9 @@ class VEC_Environment(gym.Env):
         delay = 0
         if task[3]==action["device"]:
             delay += task[1]/self.vehicles[action["device"]][]
+
+    def compute_remain_freq(self, vehicle):
+        
 
     def move_vehicles(self):
         for v in range(len(vehicles)):
