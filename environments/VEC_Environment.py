@@ -21,8 +21,9 @@ class VEC_Environment(gym.Env):
         self.reward_for_achieving_goal = (self.grid_width + self.grid_height) * 3.0
         self.step_reward_for_not_achieving_goal = -1.0
         self.state_only_dimension = 1
-        self.possible_states = [snr_level]*(numVehicles+1) + [freq_level]*(numVehicles+1) 
-        self.action_space = spaces.Dict({"device":spaces.Discrete(self.numVehicles+1), "cost":spaces.Discrete(10)})
+        self.possible_states = [snr_level]*(self.numVehicles+1) + [freq_level]*(self.actionsnumVehicles+1) 
+        self.possible_actions = [self.numVehicles+1, 10]
+        self.action_space = spaces.MultiDiscrete(self.possible_actions)
         self.observation_space = spaces.MultiDiscrete(self.possible_states)
 
         self.seed()
@@ -58,21 +59,14 @@ class VEC_Environment(gym.Env):
         self.s = np.array(self.state[:self.state_only_dimension])
         return self.s
 
-    def step(self, desired_action):
-        if type(desired_action) is np.ndarray:
-            assert desired_action.shape[0] == 1
-            assert len(desired_action.shape) == 1
-            desired_action = desired_action[0]
+    def step(self, action):
         self.step_count += 1
-        action = self.determine_which_action_will_actually_occur(desired_action)
-        desired_new_state = self.calculate_desired_new_state(action)
-        self.next_state = [self.location_to_state(self.current_user_location), self.desired_goal[0]]
-
-        if self.step_count >= self.max_episode_steps: 
+        self.next_state = self.calculate_next_state(action)
+        self.reward = self.compute_reward()
+        if len(self.vehicles)==0: 
             self.done = True
         else: 
             self.done = False
-        self.achieved_goal = self.next_state[:self.state_only_dimension]
         self.state = self.next_state
         self.s = np.array(self.next_state[:self.state_only_dimension])
         if np.random.choice(range(100)) < 10:
@@ -80,7 +74,7 @@ class VEC_Environment(gym.Env):
 
         return self.s, self.reward, self.done, {}
 
-    def compute_reward(self, achieved_goal, desired_goal, info):
+    def compute_reward(self):
         """Computes the reward we would have got with this achieved goal and desired goal. Must be of this exact
         interface to fit with the open AI gym specifications"""
         if (achieved_goal == desired_goal).all():
