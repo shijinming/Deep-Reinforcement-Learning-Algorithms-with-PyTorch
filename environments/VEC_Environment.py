@@ -92,7 +92,7 @@ class VEC_Environment(gym.Env):
         v_f = np.random.choice(vehicle_F)
         v_p = 0
         v_v = np.random.choice(self.velocity)
-        vehicles.append({"id":self.vehicle_count, "freq":v_f, "position":v_p, "tasks":[]})
+        vehicles.append({"id":self.vehicle_count, "freq":v_f, "position":v_p, "velocity":v_v, "tasks":[]})
 
     def generate_tasks(self, task_num):
         for i in range(task_num):
@@ -107,9 +107,9 @@ class VEC_Environment(gym.Env):
         if task[3]==action["device"]:
             delay = self.mu
         else:
-            dp = abs(self.vehicles[task[3]][2] - self.vehicles[action["device"]][2])
-            delay += task[0]/(self.snr_ref*(dp**self.snr_alpha))
-            delay += task[1]/get_freq_allocation(vehicles[action["device"]],task)
+            dp = abs(self.vehicles[task["source"]]["position"] - self.vehicles[action["device"]]["position"])
+            delay += task["data_size"]/(self.snr_ref*(dp**self.snr_alpha))
+            delay += task["compute_size"]/get_freq_allocation(vehicles[action["device"]],task)
         return delay
 
     def get_freq_allocation(self, vehicle, task，price):
@@ -118,8 +118,9 @@ class VEC_Environment(gym.Env):
     def finish_tasks(self):
         for v in range(len(self.vehicles)):
             if 
+
     def move_vehicles(self):
         for i in range(len(vehicles)):
-            vehicles[i][2]+=vehicles[i][3]*slot/1000.0
-            if vehicles[i][2] > maxL:
+            vehicles[i]["position"]+=vehicles[i]["velocity"]*slot/1000.0
+            if vehicles[i]["position"] > maxL:
                 vehicles.pop(i)
