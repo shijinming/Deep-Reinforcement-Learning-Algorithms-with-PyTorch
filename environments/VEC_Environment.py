@@ -15,17 +15,18 @@ class VEC_Environment(gym.Env):
 
     def __init__(self):
         self.numVehicles = 500
-        self.num_of_task_generate_per_step = 100
+        self.max_num_of_task_generate_per_step = 100
         self.vehicle_count = 0
         self.snr_level = 100
         self.freq_level = 100
+        self.cost_level = 100
         self.mu = 0.1 #ms
         self.actions = set(range(4))
         self.reward_for_achieving_goal = (self.grid_width + self.grid_height) * 3.0
         self.step_reward_for_not_achieving_goal = -1.0
         self.state_only_dimension = 1
         self.possible_states = [snr_level]*(self.numVehicles+1) + [freq_level]*(self.actionsnumVehicles+1) 
-        self.possible_actions = [self.numVehicles+1, 10]
+        self.possible_actions = [self.numVehicles+1]*self.max_num_of_task_generate_per_step + [self.cost_level]*self.max_num_of_task_generate_per_step
         self.action_space = spaces.MultiDiscrete(self.possible_actions)
         self.observation_space = spaces.MultiDiscrete(self.possible_states)
 
@@ -113,9 +114,10 @@ class VEC_Environment(gym.Env):
         return delay
 
     def get_freq_allocation(self, vehicle, task，price):
-        for t in vehicle
+        for v in range(len(self.vehicles)):
 
-    def finish_tasks(self):
+
+    def tasks_allocation(self):
         for v in range(len(self.vehicles)):
             if 
 
