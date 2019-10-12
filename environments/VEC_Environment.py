@@ -13,19 +13,17 @@ from random import randint
 class VEC_Environment(gym.Env):
     environment_name = "Vehicular Edge Computing"
 
-    def __init__(self):
-        self.numVehicles = 500
-        self.max_num_of_task_generate_per_step = 100
+    def __init__(self, num_vehicles=500, num_tasks=100):
+        self.num_vehicles = num_vehicles
+        self.max_num_of_task_generate_per_step = num_tasks
         self.vehicle_count = 0
         self.snr_level = 100
         self.freq_level = 100
         self.cost_level = 100
         self.mu = 0.1 #ms
-        self.actions = set(range(4))
-        self.reward_for_achieving_goal = (self.grid_width + self.grid_height) * 3.0
-        self.step_reward_for_not_achieving_goal = -1.0
-        self.state_only_dimension = 1
-        self.possible_states = [snr_level]*(self.numVehicles+1) + [freq_level]*(self.actionsnumVehicles+1) 
+        self.maxL = 10000 #m, max length of road
+        self.maxV = 30
+        self.possible_states = [self.maxL]*(self.numVehicles) + [self.maxV]*(self.num_vehicles) + [freq_level]*(self.actionsnumVehicles+1) 
         self.possible_actions = [self.numVehicles+1]*self.max_num_of_task_generate_per_step + [self.cost_level]*self.max_num_of_task_generate_per_step
         self.action_space = spaces.MultiDiscrete(self.possible_actions)
         self.observation_space = spaces.MultiDiscrete(self.possible_states)
@@ -36,12 +34,11 @@ class VEC_Environment(gym.Env):
         self.max_episode_steps = 100
         self.id = "VEC"
         self.vehicles = [] #vehicle element template [id, frequence, position, task_list]
-        self.velocity = range(60,110)
+        self.velocity = range(15, self.maxV)
         self.slot = 100 # ms
         self.bandwidth = 6 # MHz
         self.snr_ref = 0 # reference SNR, which is used to compute rate by B*log2(1+snr_ref*d^-a) 
         self.snr_alpha = 3
-        self.maxL = 10000 #m, max length of RSU range 
         self.vehicle_F = range(2,6)  #GHz
         self.RSU_F = 20  #GHz
         self.tasks = []
@@ -52,8 +49,6 @@ class VEC_Environment(gym.Env):
 
     def reset(self):
         """Resets the environment and returns the start state"""
-        self.desired_goal = [self.location_to_state(self.current_goal_location)]
-        self.achieved_goal = [self.location_to_state(self.current_user_location)]
         self.step_count = 0
         self.state = [self.location_to_state(self.current_user_location), self.location_to_state(self.current_goal_location)]
         self.next_state = None
@@ -95,12 +90,21 @@ class VEC_Environment(gym.Env):
         v_v = np.random.choice(self.velocity)
         vehicles.append({"id":self.vehicle_count, "freq":v_f, "position":v_p, "velocity":v_v, "tasks":[]})
 
+    def move_vehicles(self):
+        for i in range(len(vehicles)):
+            vehicles[i]["position"]+=vehicles[i]["velocity"]*slot/1000.0
+            if vehicles[i]["position"] > maxL:
+                vehicles.pop(i)
+
     def generate_tasks(self, task_num):
+        v_id = [v["id"] for v in self.vehicles]
+        v_w = [x%20+1 for x in v_id]
         for i in range(task_num):
             data_size = random.randint()
             compute_size = random.randint()
             max_delay = random.randint()
             t_total = 0
+            source = random.choices(v_id, weights=v_w, k=1)[0]
             self.tasks.append({"data_size":data_size, "compute_size":compute_size, "max_t":max_t, "start_time":start_time, "source":source})
 
     def compute_delay(self, task, action):
@@ -120,9 +124,3 @@ class VEC_Environment(gym.Env):
     def tasks_allocation(self):
         for v in range(len(self.vehicles)):
             if 
-
-    def move_vehicles(self):
-        for i in range(len(vehicles)):
-            vehicles[i]["position"]+=vehicles[i]["velocity"]*slot/1000.0
-            if vehicles[i]["position"] > maxL:
-                vehicles.pop(i)
