@@ -13,9 +13,15 @@ from random import randint
 class VEC_Environment(gym.Env):
     environment_name = "Vehicular Edge Computing"
 
-    def __init__(self, num_vehicles=500, num_tasks=100):
+    def __init__(self, num_vehicles=500, num_tasks=100, with_V2V=True, with_V2R=True):
         self.num_vehicles = num_vehicles
         self.max_num_of_task_generate_per_step = num_tasks
+        self.vehicles_for_offload = 1
+        if with_V2V:
+            self.vehicles_for_offload = self.num_vehicles
+        self.RSU_for_offload = 0
+        if with_V2R:
+            self.RSU_for_offload = 10
         self.vehicle_count = 0
         self.snr_level = 100
         self.freq_level = 100
@@ -23,8 +29,8 @@ class VEC_Environment(gym.Env):
         self.mu = 0.1 #ms
         self.maxL = 10000 #m, max length of road
         self.maxV = 30
-        self.possible_states = [self.maxL]*(self.numVehicles) + [freq_level]*(self.numVehicles) 
-        self.possible_actions = [self.numVehicles]*self.max_num_of_task_generate_per_step + [self.cost_level]*self.max_num_of_task_generate_per_step
+        self.possible_states = [self.maxL]*(self.vehicles_for_offload) + [freq_level]*(self.vehicles_for_offload+self.RSU_for_offload) 
+        self.possible_actions = [self.vehicles_for_offload+self.RSU_for_offload]*self.max_num_of_task_generate_per_step + [self.cost_level]*self.max_num_of_task_generate_per_step
         self.action_space = spaces.MultiDiscrete(self.possible_actions)
         self.observation_space = spaces.MultiDiscrete(self.possible_states)
 
