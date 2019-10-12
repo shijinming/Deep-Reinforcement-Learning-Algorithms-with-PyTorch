@@ -15,9 +15,11 @@ class VEC_Environment(gym.Env):
 
     def __init__(self):
         self.numVehicles = 500
+        self.num_of_task_generate_per_step = 100
         self.vehicle_count = 0
-        self.snr_level=100
-        self.freq_level=100
+        self.snr_level = 100
+        self.freq_level = 100
+        self.mu = 0.1 #ms
         self.actions = set(range(4))
         self.reward_for_achieving_goal = (self.grid_width + self.grid_height) * 3.0
         self.step_reward_for_not_achieving_goal = -1.0
@@ -32,11 +34,12 @@ class VEC_Environment(gym.Env):
         self.trials = 100
         self.max_episode_steps = 100
         self.id = "VEC"
-        self.vehicles = []
+        self.vehicles = [] #vehicle element template [id, frequence, position, task_list]
         self.velocity = range(60,110)
         self.slot = 100 # ms
         self.bandwidth = 6 # MHz
         self.snr_ref = 0 # reference SNR, which is used to compute rate by B*log2(1+snr_ref*d^-a) 
+        self.snr_alpha = 3
         self.maxL = 10000 #m, max length of RSU range 
         self.vehicle_F = range(2,6)  #GHz
         self.RSU_F = 20  #GHz
@@ -89,27 +92,34 @@ class VEC_Environment(gym.Env):
         v_f = np.random.choice(vehicle_F)
         v_p = 0
         v_v = np.random.choice(self.velocity)
-        tasks = []
-        vehicles.append([self.vehicle_count, v_f, v_p, tasks])
+        vehicles.append({"id":self.vehicle_count, "freq":v_f, "position":v_p, "tasks":[]})
 
-    def generate_tasks(self):
-        for v in vehicles:
+    def generate_tasks(self, task_num):
+        for i in range(task_num):
             data_size = random.randint()
             compute_size = random.randint()
             max_delay = random.randint()
             t_total = 0
-            self.tasks.append([data_size, compute_size, max_t, source])
+            self.tasks.append({"data_size":data_size, "compute_size":compute_size, "max_t":max_t, "start_time":start_time, "source":source})
 
     def compute_delay(self, task, action):
         delay = 0
         if task[3]==action["device"]:
-            delay += task[1]/self.vehicles[action["device"]][]
+            delay = self.mu
+        else:
+            dp = abs(self.vehicles[task[3]][2] - self.vehicles[action["device"]][2])
+            delay += task[0]/(self.snr_ref*(dp**self.snr_alpha))
+            delay += task[1]/get_freq_allocation(vehicles[action["device"]],task)
+        return delay
 
-    def compute_remain_freq(self, vehicle):
-        
+    def get_freq_allocation(self, vehicle, task，price):
+        for t in vehicle
 
+    def finish_tasks(self):
+        for v in range(len(self.vehicles)):
+            if 
     def move_vehicles(self):
-        for v in range(len(vehicles)):
+        for i in range(len(vehicles)):
             vehicles[i][2]+=vehicles[i][3]*slot/1000.0
             if vehicles[i][2] > maxL:
                 vehicles.pop(i)
