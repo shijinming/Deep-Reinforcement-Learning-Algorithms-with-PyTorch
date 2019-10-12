@@ -23,8 +23,8 @@ class VEC_Environment(gym.Env):
         self.mu = 0.1 #ms
         self.maxL = 10000 #m, max length of road
         self.maxV = 30
-        self.possible_states = [self.maxL]*(self.numVehicles) + [self.maxV]*(self.num_vehicles) + [freq_level]*(self.actionsnumVehicles+1) 
-        self.possible_actions = [self.numVehicles+1]*self.max_num_of_task_generate_per_step + [self.cost_level]*self.max_num_of_task_generate_per_step
+        self.possible_states = [self.maxL]*(self.numVehicles) + [freq_level]*(self.numVehicles) 
+        self.possible_actions = [self.numVehicles]*self.max_num_of_task_generate_per_step + [self.cost_level]*self.max_num_of_task_generate_per_step
         self.action_space = spaces.MultiDiscrete(self.possible_actions)
         self.observation_space = spaces.MultiDiscrete(self.possible_states)
 
@@ -38,7 +38,7 @@ class VEC_Environment(gym.Env):
         self.slot = 100 # ms
         self.bandwidth = 6 # MHz
         self.snr_ref = 0 # reference SNR, which is used to compute rate by B*log2(1+snr_ref*d^-a) 
-        self.snr_alpha = 3
+        self.snr_alpha = 2
         self.vehicle_F = range(2,6)  #GHz
         self.RSU_F = 20  #GHz
         self.tasks = []
@@ -60,8 +60,9 @@ class VEC_Environment(gym.Env):
 
     def step(self, action):
         self.step_count += 1
-        self.next_state = self.calculate_next_state(action)
-        self.reward = self.compute_reward()
+        self.tasks = []
+        self.generate_tasks(self.max_num_of_task_generate_per_step)
+        self.next_state,self.reward = self.calculate_next_state(action)
         if len(self.vehicles)==0: 
             self.done = True
         else: 
@@ -73,14 +74,25 @@ class VEC_Environment(gym.Env):
 
         return self.s, self.reward, self.done, {}
 
+    def step_next_state(self, action):
+        state = [0]*self.num_vehicles + [0]*self.num_vehicles
+        self.move_vehicles()
+        for i in range(len(self.tasks)):
+
+            self.vehicles[action[i]]["tasks"].append([self.tasks[i]["start_time"], self.tasks[i]["max_t"], freq])
+        for v in self.vehicles:
+            state[v["id"]] = v["position"]
+            f_tmp = 0
+            for j in v["tasks"]:
+
+        return np.array(state)
+        
+
     def compute_reward(self):
         """Computes the reward we would have got with this achieved goal and desired goal. Must be of this exact
         interface to fit with the open AI gym specifications"""
-        if (achieved_goal == desired_goal).all():
-            reward = self.reward_for_achieving_goal
-        else:
-            reward = self.step_reward_for_not_achieving_goal
-        return reward
+        for i in range(len(self.tasks)):
+
 
     def add_vehicle(self):
         if self.vehicle_count > self.numVehicles:
@@ -104,6 +116,7 @@ class VEC_Environment(gym.Env):
             compute_size = random.randint()
             max_delay = random.randint()
             t_total = 0
+            start_time = self.step_count * self.slot
             source = random.choices(v_id, weights=v_w, k=1)[0]
             self.tasks.append({"data_size":data_size, "compute_size":compute_size, "max_t":max_t, "start_time":start_time, "source":source})
 
