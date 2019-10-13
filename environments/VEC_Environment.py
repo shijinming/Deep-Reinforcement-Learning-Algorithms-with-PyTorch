@@ -148,6 +148,7 @@ class VEC_Environment(gym.Env):
             start_time = self.step_count * self.slot
             source = random.choices(v_id, weights=v_w, k=1)[0]
             freq = 0
+            cost = 0
             self.tasks.append({"data_size":data_size, "compute_size":compute_size, "max_t":max_t, "start_time":start_time, "source":source, "freq":freq, "cost":cost})
 
     def tasks_update(self):
