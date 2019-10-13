@@ -28,24 +28,24 @@ class VEC_Environment(gym.Env):
         self.mu = 0.1 #ms
         self.maxL = 10000 #m, max length of road
         self.maxV = 30
+        self.velocity = np.arange(15, self.maxV, 0.1)
+        self.slot = 100 # ms
+        self.bandwidth = 6 # MHz
+        self.snr_ref = 1 # reference SNR, which is used to compute rate by B*log2(1+snr_ref*d^-a) 
+        self.snr_alpha = 2
+        self.vehicle_F = range(2,6)  #GHz
+        self.RSU_F = 20  #GHz
+
         self.possible_states = [self.maxL]*(self.vehicles_for_offload) + [self.freq_level]*(self.vehicles_for_offload+self.RSU_for_offload) 
         self.possible_actions = [self.vehicles_for_offload+self.RSU_for_offload]*self.max_num_of_task_generate_per_step + [self.cost_level]*self.max_num_of_task_generate_per_step
         self.action_space = spaces.MultiDiscrete(self.possible_actions)
         self.observation_space = spaces.MultiDiscrete(self.possible_states)
-
         self.seed()
         self.reward_threshold = 0.0
         self.trials = 100
         self.max_episode_steps = 100
         self.id = "VEC"
         self.vehicles = [] #vehicle element template [id, frequence, position, task_list]
-        self.velocity = range(15, self.maxV)
-        self.slot = 100 # ms
-        self.bandwidth = 6 # MHz
-        self.snr_ref = 0 # reference SNR, which is used to compute rate by B*log2(1+snr_ref*d^-a) 
-        self.snr_alpha = 2
-        self.vehicle_F = range(2,6)  #GHz
-        self.RSU_F = 20  #GHz
         self.tasks = []
 
     def seed(self, seed=None):
@@ -83,7 +83,7 @@ class VEC_Environment(gym.Env):
             self.vehicles[action[i]]["new_tasks"].append(self.tasks[i])
         reward = self.compute_reward()
         for v in self.vehicles:
-            state[v["id"]] = v["position"]
+            state[v["id"]] = round(v["position"])
             state[v["id"]+self.vehicles_for_offload] = v["freq"] - sum([i["freq"] for i in v["tasks"]])
         return np.array(state), reward
 
@@ -113,7 +113,7 @@ class VEC_Environment(gym.Env):
                     total_cost = [task["cost"] for task in other_tasks]
                     for i in other_tasks:
                         freq = i["cost"]/total_cost*freq_remain
-                        dp = abs(v["position"] - i["source"]["position"])
+                        dp = abs(v["position"] - i["source"]["position"])/10
                         snr = self.snr_ref*(dp**-2) if dp>10 else self.snr_ref
                         delay = dp/(self.bandwidth*np.log2(1+snr)) + i["data_size"]/(freq)
                         if delay < i["max_t"]:
