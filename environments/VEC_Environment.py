@@ -113,7 +113,7 @@ class VEC_Environment(gym.Env):
                     total_cost = [task["cost"] for task in other_tasks]
                     for i in other_tasks:
                         freq = i["cost"]/total_cost*freq_remain
-                        dp = abs(v["position"] - i["source"]["position"])/10
+                        dp = abs(v["position"] - i["source"]["position"])/50
                         snr = self.snr_ref*(dp**-2) if dp>10 else self.snr_ref
                         delay = dp/(self.bandwidth*np.log2(1+snr)) + i["data_size"]/(freq)
                         if delay < i["max_t"]:
