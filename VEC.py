@@ -6,14 +6,22 @@ from utilities.data_structures.Config import Config
 config = Config()
 config.seed = 1
 
-height = 15
-width = 15
-random_goal_place = False
-num_possible_states = (height * width) ** (1 + 1*random_goal_place)
+V2V = True
+V2R = True
+vehicle_num = 500
+task_num = 100
+vehicles_for_offload = 1
+if V2V:
+    vehicles_for_offload = vehicle_num
+RSU_for_offload = 0
+if V2R:
+    RSU_for_offload = 10
+    
+num_possible_states = vehicles_for_offload*2 + RSU_for_offload
 embedding_dimensions = [[num_possible_states, 20]]
 print("Num possible states ", num_possible_states)
 
-config.environment = VEC_Environment(height, width, stochastic_actions_probability=0.0, random_start_user_place=True, random_goal_place=random_goal_place)
+config.environment = VEC_Environment(num_vehicles=vehicle_num, num_tasks=task_num, with_V2V=V2V, with_V2R=V2R)
 
 config.num_episodes_to_run = 1000
 config.file_to_save_data_results = "results/data_and_graphs/VEC.pkl"

@@ -84,7 +84,8 @@ class VEC_Environment(gym.Env):
         reward = self.compute_reward()
         for v in self.vehicles:
             state[v["id"]] = round(v["position"])
-            state[v["id"]+self.vehicles_for_offload] = v["freq"] - sum([i["freq"] for i in v["tasks"]])
+            freq_r = v["freq"] - sum([i["freq"] for i in v["tasks"]])
+            state[v["id"]+self.vehicles_for_offload] = freq_r if freq_r>0 else 0
         return np.array(state), reward
 
     def compute_reward(self):
@@ -113,10 +114,10 @@ class VEC_Environment(gym.Env):
                     total_cost = [task["cost"] for task in other_tasks]
                     for i in other_tasks:
                         freq = i["cost"]/total_cost*freq_remain
-                        dp = abs(v["position"] - i["source"]["position"])/50
-                        snr = self.snr_ref*(dp**-2) if dp>10 else self.snr_ref
-                        delay = dp/(self.bandwidth*np.log2(1+snr)) + i["data_size"]/(freq)
-                        if delay < i["max_t"]:
+                        dp = abs(v["position"] - i["source"]["position"])
+                        snr = self.snr_ref*((dp/50)**-2) if dp>50 else self.snr_ref
+                        delay = i["data_size"]/(self.bandwidth*np.log2(1+snr)) + i["compute_size"]/freq
+                        if delay <= i["max_t"]:
                             i["freq"] = freq
                             reward += np.log(1+(i["max_t"]-delay))
                             v["tasks"].append(i)
