@@ -39,7 +39,7 @@ class VEC_Environment(gym.Env):
         self.possible_states = [self.maxL]*(self.vehicles_for_offload) + [self.freq_level]*(self.vehicles_for_offload+self.RSU_for_offload) 
         self.possible_actions = [self.vehicles_for_offload+self.RSU_for_offload]*self.max_num_of_task_generate_per_step + [self.cost_level]*self.max_num_of_task_generate_per_step
         self.action_space = spaces.MultiDiscrete(self.possible_actions)
-        self.observation_space = spaces.MultiDiscrete(self.possible_states)
+        self.observation_space = spaces.Tuple(spaces.Discrete(max_v),spaces.Box(0,))
         self.seed()
         self.reward_threshold = 0.0
         self.trials = 100
