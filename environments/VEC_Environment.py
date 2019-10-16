@@ -26,25 +26,26 @@ class VEC_Environment(gym.Env):
         self.snr_ref = 1 # reference SNR, which is used to compute rate by B*log2(1+snr_ref*d^-a) 
         self.snr_alpha = 2
         self.vehicle_F = range(2,7)  #GHz
-        self.max_datasize = 10
-        self.max_compsize = 10
+        self.max_datasize = 10 #MBytes
+        self.max_compsize = 1 #GHz
         self.max_tau = 10 # s
         self.price = 0.1
-        self.init_vehicles()
 
         self.action_space = spaces.Tuple((spaces.Discrete(self.max_v),spaces.Box(self.price,10*np.log(1+self.max_tau)/self.max_compsize,(1,))))
         self.observation_space = spaces.Dict({"num_vehicles":spaces.Discrete(self.max_v),
-        "position":spaces.Box(0,self.maxR,shape=(0,self.max_v,)),
-        "velocity":spaces.Box(0,self.maxV,shape=(self.max_v,)),
-        "freq_remain":spaces.Box(0,6,shape=(self.max_v,)),
-        "task":spaces.Box(0,max(self.max_datasize,self.max_compsize,self.max_tau),shape=(3,))})
+        "position":spaces.Box(0,self.maxR,shape=(self.max_v,),dtype='float32'),
+        "velocity":spaces.Box(0,self.maxV,shape=(self.max_v,),dtype='float32'),
+        "freq_remain":spaces.Box(0,6,shape=(self.max_v,),dtype='float32'),
+        "task":spaces.Box(0,max(self.max_datasize,self.max_compsize,self.max_tau),shape=(3,),dtype='float32')})
         self.seed()
         self.reward_threshold = 0.0
         self.trials = 100
         self.max_episode_steps = 100
         self.id = "VEC"
+        
         self.vehicles = [] #vehicles in the range
         self.tasks = [] #tasks for offloading
+        self.init_vehicles()
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -52,7 +53,8 @@ class VEC_Environment(gym.Env):
 
     def reset(self):
         """Resets the environment and returns the start state"""
-        self.add_vehicle()
+        for _ in range(random.randint(1,10)):
+            self.add_vehicle()
         self.move_vehicles()
         self.generate_local_tasks()
         self.generate_offload_tasks()
@@ -110,7 +112,7 @@ class VEC_Environment(gym.Env):
             v_p = random.uniform(-self.maxR,self.maxR)
             v_v = random.uniform(-self.maxV,self.maxV)
             v_v = v_v if v_v!=0 else random.choice([-0.1, 0.1])
-            self.vehicles.append({"id":self.vehicle_count, "freq":v_f, "position":v_p, "velocity":v_v, "tasks":[], "freq_remain":v_f})
+            self.vehicles.append({"id":self.vehicle_count, "freq":v_f, "position":v_p, "velocity":v_v, "freq_remain":v_f, "tasks":[]})
 
     def add_vehicle(self):
         if len(self.vehicles) <= self.max_v:
@@ -119,7 +121,7 @@ class VEC_Environment(gym.Env):
             v_v = random.uniform(-self.maxV,self.maxV)
             v_v = v_v if v_v!=0 else random.choice([-0.1, 0.1])
             v_p = -self.maxR if v_v>0 else self.maxR
-            self.vehicles.append({"id":self.vehicle_count, "freq":v_f, "position":v_p, "velocity":v_v, "tasks":[], "freq_remain":v_f})
+            self.vehicles.append({"id":self.vehicle_count, "freq":v_f, "position":v_p, "velocity":v_v, "freq_remain":v_f, "tasks":[]})
 
     def move_vehicles(self):
         for i in range(len(self.vehicles)-1,-1,-1):
@@ -132,14 +134,15 @@ class VEC_Environment(gym.Env):
             v["tasks"] = []
             for _ in range(random.randint(round(self.max_local_task/10),self.max_local_task)):
                 data_size = random.uniform(self.max_datasize/10,self.max_datasize)
-                compute_size = random.uniform(self.max_compsize,self.max_compsize)
+                compute_size = random.uniform(self.max_compsize/10,self.max_compsize)
                 max_t = random.randint(self.max_tau/10,self.max_tau)
                 v["tasks"].append({"data_size":data_size, "compute_size":compute_size, "max_t":max_t})
             v["freq_remain"] = v["freq"] - sum([i["compute_size"]/i["max_t"] for i in v["tasks"]])
+            v["freq_remain"] = v["freq_remain"] if v["freq_remain"]>0 else 0
     
     def generate_offload_tasks(self):
         for _ in range(self.task_num_per_episode):
             data_size = random.uniform(self.max_datasize/10,self.max_datasize)
-            compute_size = random.uniform(self.max_compsize,self.max_compsize)
+            compute_size = random.uniform(self.max_compsize/10,self.max_compsize)
             max_t = random.randint(self.max_tau/10,self.max_tau)
             self.tasks.append({"data_size":data_size, "compute_size":compute_size, "max_t":max_t})
