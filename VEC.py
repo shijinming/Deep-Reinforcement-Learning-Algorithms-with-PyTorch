@@ -5,23 +5,11 @@ from utilities.data_structures.Config import Config
 
 config = Config()
 config.seed = 1
-
-V2V = True
-V2R = True
-vehicle_num = 500
-task_num = 100
-vehicles_for_offload = 1
-if V2V:
-    vehicles_for_offload = vehicle_num
-RSU_for_offload = 0
-if V2R:
-    RSU_for_offload = 10
     
-num_possible_states = vehicles_for_offload*2 + RSU_for_offload
-embedding_dimensions = [[num_possible_states, 20]]
-print("Num possible states ", num_possible_states)
+# embedding_dimensions = [[num_possible_states, 20]]
+# print("Num possible states ", num_possible_states)
 
-config.environment = VEC_Environment(num_vehicles=vehicle_num, num_tasks=task_num, with_V2V=V2V, with_V2R=V2R)
+config.environment = VEC_Environment(num_vehicles=50, task_num=30)
 
 config.num_episodes_to_run = 1000
 config.file_to_save_data_results = "results/data_and_graphs/VEC.pkl"
@@ -44,7 +32,7 @@ config.hyperparameters = {
         "batch_size": 256,
         "final_layer_activation": "None",
         "columns_of_data_to_be_embedded": [0],
-        "embedding_dimensions": embedding_dimensions,
+        # "embedding_dimensions": embedding_dimensions,
         "batch_norm": False,
         "gradient_clipping_norm": 5,
         "update_every_n_steps": 1,
@@ -53,7 +41,6 @@ config.hyperparameters = {
         "learning_iterations": 1,
         "tau": 0.01,
         "exploration_cycle_episodes_length": None,
-        "learning_iterations": 1,
         "clip_rewards": False
     },
 
@@ -69,8 +56,7 @@ config.hyperparameters = {
             "linear_hidden_units": [20, 10],
             "final_layer_activation": "None",
             "columns_of_data_to_be_embedded": [0, 1],
-            "embedding_dimensions": [embedding_dimensions[0],
-                                     [20, 6]],
+            # "embedding_dimensions": [embedding_dimensions[0], [20, 6]],
             "batch_norm": False,
             "gradient_clipping_norm": 2,
             "update_every_n_steps": 1,
@@ -89,7 +75,7 @@ config.hyperparameters = {
             "batch_size": 256,
             "final_layer_activation": "None",
             "columns_of_data_to_be_embedded": [0],
-            "embedding_dimensions": embedding_dimensions,
+            # "embedding_dimensions": embedding_dimensions,
             "batch_norm": False,
             "gradient_clipping_norm": 5,
             "update_every_n_steps": 1,
@@ -109,7 +95,7 @@ config.hyperparameters = {
         "linear_hidden_units": [20, 10],
 
         "columns_of_data_to_be_embedded": [0],
-        "embedding_dimensions": embedding_dimensions,
+        # "embedding_dimensions": embedding_dimensions,
         "final_layer_activation": ["SOFTMAX", None],
         "gradient_clipping_norm": 5.0,
         "discount_rate": 0.99,
@@ -127,7 +113,7 @@ config.hyperparameters = {
             "learning_rate": 0.01,
             "linear_hidden_units": [20, 10],
             "columns_of_data_to_be_embedded": [0],
-            "embedding_dimensions": embedding_dimensions,
+            # "embedding_dimensions": embedding_dimensions,
         },
 
         "AGENT": {
@@ -144,7 +130,7 @@ config.hyperparameters = {
         "batch_size": 256,
         "final_layer_activation": "None",
         "columns_of_data_to_be_embedded": [0],
-        "embedding_dimensions": embedding_dimensions,
+        # "embedding_dimensions": embedding_dimensions,
         "batch_norm": False,
         "gradient_clipping_norm": 5,
         "update_every_n_steps": 1,
