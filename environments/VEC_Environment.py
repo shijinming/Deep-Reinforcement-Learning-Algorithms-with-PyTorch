@@ -9,6 +9,7 @@ from gym import spaces
 from gym.utils import seeding
 from matplotlib import pyplot
 from random import randint
+from scipy.optimize import fsolve
 
 class VEC_Environment(gym.Env):
     environment_name = "Vehicular Edge Computing"
@@ -20,18 +21,23 @@ class VEC_Environment(gym.Env):
         self.maxR = 500 #m, max relative distance between request vehicle and other vehicles
         self.maxV = 30 #km/h, max relative velocity between requst vehicle and other vehicles
         self.max_v = 80 # maximum vehicles in the communication range of request vehicle
-        self.max_tau = 10 # s
+        self.max_local_task = 30
         self.bandwidth = 6 # MHz
         self.snr_ref = 1 # reference SNR, which is used to compute rate by B*log2(1+snr_ref*d^-a) 
         self.snr_alpha = 2
         self.vehicle_F = range(2,7)  #GHz
+        self.max_datasize = 10
+        self.max_compsize = 10
+        self.max_tau = 10 # s
+        self.price = 0.1
         self.init_vehicles()
 
-        self.action_space = spaces.Tuple((spaces.Discrete(self.max_v),spaces.Box(0,1,(1,))))
+        self.action_space = spaces.Tuple((spaces.Discrete(self.max_v),spaces.Box(self.price,10*np.log(1+self.max_tau)/self.max_compsize,(1,))))
         self.observation_space = spaces.Dict({"num_vehicles":spaces.Discrete(self.max_v),
         "position":spaces.Box(0,self.maxR,shape=(0,self.max_v,)),
         "velocity":spaces.Box(0,self.maxV,shape=(self.max_v,)),
-        "freq_remain":spaces.Box(0,6,shape=(self.max_v,))})
+        "freq_remain":spaces.Box(0,6,shape=(self.max_v,)),
+        "task":spaces.Box(0,max(self.max_datasize,self.max_compsize,self.max_tau),shape=(3,))})
         self.seed()
         self.reward_threshold = 0.0
         self.trials = 100
@@ -54,28 +60,48 @@ class VEC_Environment(gym.Env):
         self.next_state = None
         self.reward = None
         self.done = False
+        task = self.tasks.pop()
         self.s = {"num_vehicles":np.array(len(self.vehicles)),
         "position":np.array([v["position"] for v in self.vehicles]+[0]*(self.max_v-len(self.vehicles))),
         "velocity":np.array([v["velocity"] for v in self.vehicles]+[0]*(self.max_v-len(self.vehicles))),
-        "freq_remain":np.array([v["freq_remain"] for v in self.vehicles]+[0]*(self.max_v-len(self.vehicles)))}
+        "freq_remain":np.array([v["freq_remain"] for v in self.vehicles]+[0]*(self.max_v-len(self.vehicles))),
+        "task":np.array([task["data_size"],task["compute_size"],task["max_t"]])}
         return self.s
 
     def step(self, action):
         self.step_count += 1
-        self.next_state = self.s
-        self.next_state["freq_remain"][action[1]]
+        freq_alloc, self.reward = self.compute_freq_alloc_and_reward(action)
+        self.s["freq_remain"][action[0]] -= freq_alloc
+        task = self.tasks.pop()
+        self.s["task"] = [task["data_size"],task["compute_size"],task["max_t"]]
         if self.step_count >= self.task_num_per_episode: 
             self.done = True
         else: 
             self.done = False
-        return self.next_state, self.reward, self.done, {}
+        return self.s, self.reward, self.done, {}
 
-    def compute_reward(self):
+    def compute_freq_alloc_and_reward(self, action):
         """Computes the reward we would have got with this achieved goal and desired goal. Must be of this exact
         interface to fit with the open AI gym specifications"""
+        v_id = action[0]
+        cost = action[1]
+        task = self.s["task"]
+        if v_id >= len(self.vehicles):
+            return -np.log(1+task[2])
         reward = 0
-
-        return reward
+        v = self.vehicles[v_id]
+        alpha_max = v["freq_remain"]/v["freq"]
+        u_max = sum([np.log(1+alpha_max*i["max_t"]) for i in v["tasks"]])
+        alpha = fsolve(lambda a:sum([np.log(1+a*i["max_t"]) for i in v["tasks"]])-u_max+(cost-self.price)*task[1],0.1)
+        alpha = alpha if alpha>0 else 0
+        freq_alloc = v["freq"]-(v["freq"]-v["freq_remain"])/(1-alpha)
+        snr = self.snr_ref if abs(v["position"])<50 else self.snr_ref*(abs(v["position"])/50)**-2
+        t_total = task[0]/(self.bandwidth*np.log2(1+snr)) + task[1]/freq_alloc
+        if t_total <= task[2]:
+            reward = np.log(1+task[2]-t_total) - cost*task[1]
+        else:
+            reward = -np.log(1+task[2])
+        return freq_alloc, reward
 
     def init_vehicles(self):
         for _ in range(self.num_vehicles):
@@ -104,16 +130,16 @@ class VEC_Environment(gym.Env):
     def generate_local_tasks(self):
         for v in self.vehicles:
             v["tasks"] = []
-            for _ in range(random.randint(1,10)):
-                data_size = random.randint(1,10)
-                compute_size = random.randint(1,10)
-                max_t = random.randint(1,10)
+            for _ in range(random.randint(round(self.max_local_task/10),self.max_local_task)):
+                data_size = random.uniform(self.max_datasize/10,self.max_datasize)
+                compute_size = random.uniform(self.max_compsize,self.max_compsize)
+                max_t = random.randint(self.max_tau/10,self.max_tau)
                 v["tasks"].append({"data_size":data_size, "compute_size":compute_size, "max_t":max_t})
-            v["freq_remain"] = sum([i["compute_size"]/i["max_t"] for i in v["tasks"]])
+            v["freq_remain"] = v["freq"] - sum([i["compute_size"]/i["max_t"] for i in v["tasks"]])
     
     def generate_offload_tasks(self):
         for _ in range(self.task_num_per_episode):
-            data_size = random.randint(1,10)
-            compute_size = random.randint(1,10)
-            max_t = random.randint(1,10)
+            data_size = random.uniform(self.max_datasize/10,self.max_datasize)
+            compute_size = random.uniform(self.max_compsize,self.max_compsize)
+            max_t = random.randint(self.max_tau/10,self.max_tau)
             self.tasks.append({"data_size":data_size, "compute_size":compute_size, "max_t":max_t})
