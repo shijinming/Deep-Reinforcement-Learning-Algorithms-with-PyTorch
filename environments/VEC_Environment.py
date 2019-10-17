@@ -32,7 +32,7 @@ class VEC_Environment(gym.Env):
         self.price = 0.1
         self.max_price = np.log(1+self.max_tau)/self.max_compsize*10
 
-        self.action_space = spaces.Box(0, self.max_v, (1,))
+        self.action_space = spaces.Box(low=0, high=self.max_v, shape=(1,))
         self.observation_space = spaces.Dict({"num_vehicles":spaces.Discrete(self.max_v),
         "position":spaces.Box(0,self.maxR,shape=(self.max_v,),dtype='float32'),
         "velocity":spaces.Box(0,self.maxV,shape=(self.max_v,),dtype='float32'),
@@ -74,7 +74,7 @@ class VEC_Environment(gym.Env):
     def step(self, action):
         self.step_count += 1
         self.reward = self.compute_reward(action)
-        if int(action[0]) < len(self.vehicles):
+        if 0 <= int(action[0]) < len(self.vehicles):
             self.s["freq_remain"][int(action[0])] = self.vehicles[int(action[0])]["freq_remain"]
         task = self.tasks.pop()
         self.s["task"] = [task["data_size"],task["compute_size"],task["max_t"]]
@@ -91,8 +91,9 @@ class VEC_Environment(gym.Env):
         cost = (action[0]-int(action[0]))*self.max_price + self.price
         task = self.s["task"]
         reward = -np.log(1+self.max_tau)
-        if v_id >= len(self.vehicles):
+        if v_id >= len(self.vehicles) or v_id < 0:
             return reward
+        print("v_id=",v_id," vehicle_num=",len(self.vehicles))
         v = self.vehicles[v_id]
         if v["freq_remain"]==0:
             return reward
