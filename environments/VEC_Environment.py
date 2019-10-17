@@ -92,7 +92,7 @@ class VEC_Environment(gym.Env):
         v_id = action[0]
         cost = action[1]
         task = self.s["task"]
-        reward = -np.log(1+task[2])
+        reward = -np.log(1+1/task[2])
         freq_alloc = 0
         if v_id >= len(self.vehicles):
             return freq_alloc,reward
