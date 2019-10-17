@@ -119,7 +119,7 @@ class VEC_Environment(gym.Env):
             v_p = random.uniform(-self.maxR,self.maxR)
             v_v = random.uniform(-self.maxV,self.maxV)
             v_v = v_v if v_v!=0 else random.choice([-0.1, 0.1])
-            self.vehicles.append({"id":self.vehicle_count, "freq":v_f, "position":v_p, "velocity":v_v, "freq_remain":v_f, "tasks":[]})
+            self.vehicles.append({"id":self.vehicle_count, "position":v_p, "velocity":v_v, "freq_init":v_f, "freq":v_f, "freq_remain":0, "tasks":[]})
 
     def add_vehicle(self):
         if len(self.vehicles) <= self.max_v:
@@ -128,7 +128,7 @@ class VEC_Environment(gym.Env):
             v_v = random.uniform(-self.maxV,self.maxV)
             v_v = v_v if v_v!=0 else random.choice([-0.1, 0.1])
             v_p = -self.maxR if v_v>0 else self.maxR
-            self.vehicles.append({"id":self.vehicle_count, "freq":v_f, "position":v_p, "velocity":v_v, "freq_remain":v_f, "tasks":[]})
+            self.vehicles.append({"id":self.vehicle_count, "position":v_p, "velocity":v_v, "freq_init":v_f, "freq":v_f, "freq_remain":0, "tasks":[]})
 
     def move_vehicles(self):
         for i in range(len(self.vehicles)-1,-1,-1):
@@ -144,7 +144,7 @@ class VEC_Environment(gym.Env):
                 compute_size = random.uniform(self.max_compsize/10,self.max_compsize)
                 max_t = random.uniform(self.max_tau/10,self.max_tau)
                 v["tasks"].append({"data_size":data_size, "compute_size":compute_size, "max_t":max_t})
-            v["freq_remain"] = v["freq"] - sum([i["compute_size"]/i["max_t"] for i in v["tasks"]])
+            v["freq_remain"] = v["freq_init"] - sum([i["compute_size"]/i["max_t"] for i in v["tasks"]])
             v["freq_remain"] = v["freq_remain"] if v["freq_remain"]>0 else 0
     
     def generate_offload_tasks(self):
