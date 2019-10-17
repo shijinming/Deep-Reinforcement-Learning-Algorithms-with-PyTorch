@@ -30,8 +30,9 @@ class VEC_Environment(gym.Env):
         self.max_compsize = 1 #GHz
         self.max_tau = 10 # s
         self.price = 0.1
+        self.max_price = np.log(1+self.max_tau)/self.max_compsize*10
 
-        self.action_space = spaces.Tuple((spaces.Discrete(self.max_v),spaces.Box(self.price,10*np.log(1+self.max_tau)/self.max_compsize,(1,))))
+        self.action_space = spaces.Box(0, self.max_v, (1,))
         self.observation_space = spaces.Dict({"num_vehicles":spaces.Discrete(self.max_v),
         "position":spaces.Box(0,self.maxR,shape=(self.max_v,),dtype='float32'),
         "velocity":spaces.Box(0,self.maxV,shape=(self.max_v,),dtype='float32'),
@@ -68,13 +69,13 @@ class VEC_Environment(gym.Env):
         "velocity":np.array([v["velocity"] for v in self.vehicles]+[0]*(self.max_v-len(self.vehicles))),
         "freq_remain":np.array([v["freq_remain"] for v in self.vehicles]+[0]*(self.max_v-len(self.vehicles))),
         "task":np.array([task["data_size"],task["compute_size"],task["max_t"]])}
-        return self.s
+        return spaces.flatten(self.observation_space, self.s)
 
     def step(self, action):
         self.step_count += 1
         self.reward = self.compute_reward(action)
-        if action[0] < len(self.vehicles):
-            self.s["freq_remain"][action[0]] = self.vehicles[action[0]]["freq_remain"]
+        if int(action[0]) < len(self.vehicles):
+            self.s["freq_remain"][int(action[0])] = self.vehicles[int(action[0])]["freq_remain"]
         task = self.tasks.pop()
         self.s["task"] = [task["data_size"],task["compute_size"],task["max_t"]]
         if self.step_count >= self.task_num_per_episode: 
@@ -86,8 +87,8 @@ class VEC_Environment(gym.Env):
     def compute_reward(self, action):
         """Computes the reward we would have got with this achieved goal and desired goal. Must be of this exact
         interface to fit with the open AI gym specifications"""
-        v_id = action[0]
-        cost = action[1][0]
+        v_id = int(action[0])
+        cost = (action[0]-int(action[0]))*self.max_price + self.price
         task = self.s["task"]
         reward = -np.log(1+self.max_tau)
         if v_id >= len(self.vehicles):
