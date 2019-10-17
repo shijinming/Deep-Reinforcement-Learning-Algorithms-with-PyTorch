@@ -82,7 +82,7 @@ class VEC_Environment(gym.Env):
             self.done = True
         else: 
             self.done = False
-        return self.s, self.reward, self.done, {}
+        return spaces.flatten(self.observation_space, self.s), self.reward, self.done, {}
 
     def compute_reward(self, action):
         """Computes the reward we would have got with this achieved goal and desired goal. Must be of this exact
