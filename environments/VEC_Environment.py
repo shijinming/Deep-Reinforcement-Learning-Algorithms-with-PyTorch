@@ -72,12 +72,9 @@ class VEC_Environment(gym.Env):
 
     def step(self, action):
         self.step_count += 1
-        freq_alloc, self.reward = self.compute_freq_alloc_and_reward(action)
-        v = self.vehicles[action[0]]
-        v["freq"] -= freq_alloc
-        v["freq_remain"] = v["freq"] - sum([i["compute_size"]/i["max_t"] for i in v["tasks"]])
-        v["freq_remain"] = v["freq_remain"] if v["freq_remain"]>0 else 0
-        self.s["freq_remain"][action[0]] = v["freq_remain"]
+        self.reward = self.compute_reward(action)
+        if action[0] < len(self.vehicles):
+            self.s["freq_remain"][action[0]] = self.vehicles[action[0]]["freq_remain"]
         task = self.tasks.pop()
         self.s["task"] = [task["data_size"],task["compute_size"],task["max_t"]]
         if self.step_count >= self.task_num_per_episode: 
@@ -86,32 +83,34 @@ class VEC_Environment(gym.Env):
             self.done = False
         return self.s, self.reward, self.done, {}
 
-    def compute_freq_alloc_and_reward(self, action):
+    def compute_reward(self, action):
         """Computes the reward we would have got with this achieved goal and desired goal. Must be of this exact
         interface to fit with the open AI gym specifications"""
         v_id = action[0]
-        cost = action[1]
+        cost = action[1][0]
         task = self.s["task"]
         reward = -np.log(1+1/task[2])
-        freq_alloc = 0
         if v_id >= len(self.vehicles):
-            return freq_alloc,reward
+            return reward
         v = self.vehicles[v_id]
         if v["freq_remain"]==0:
-            return freq_alloc,reward
+            return reward
         alpha_max = v["freq_remain"]/v["freq"]
         u_max = sum([np.log(1+alpha_max*i["max_t"]) for i in v["tasks"]])
-        alpha = fsolve(lambda a:sum([np.log(1+a*i["max_t"]) for i in v["tasks"]])-u_max+(cost-self.price)*task[1],0.1)
+        alpha = fsolve(lambda a:sum([np.log(1+a*i["max_t"]) for i in v["tasks"]])-u_max+(cost-self.price)*task[1],0.1)[0]
         if alpha <=0:
-            return freq_alloc,reward
+            return reward
         freq_alloc = v["freq"]-(v["freq"]-v["freq_remain"])/(1-alpha)
-        if freq_alloc <=0:
-            return 0,reward
+        if freq_alloc <= 0:
+            return reward
         snr = self.snr_ref if abs(v["position"])<50 else self.snr_ref*(abs(v["position"])/50)**-2
         t_total = task[0]/(self.bandwidth*np.log2(1+snr)) + task[1]/freq_alloc
         if t_total <= task[2]:
             reward = np.log(1+task[2]-t_total) - cost*task[1]
-        return freq_alloc, reward
+            v["freq"] -= freq_alloc
+            v["freq_remain"] = v["freq"] - sum([i["compute_size"]/i["max_t"] for i in v["tasks"]])
+            v["freq_remain"] = v["freq_remain"] if v["freq_remain"]>0 else 0
+        return reward
 
     def init_vehicles(self):
         for _ in range(self.num_vehicles):
