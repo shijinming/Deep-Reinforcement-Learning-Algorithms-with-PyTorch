@@ -14,7 +14,7 @@ from scipy.optimize import fsolve
 class VEC_Environment(gym.Env):
     environment_name = "Vehicular Edge Computing"
 
-    def __init__(self, num_vehicles=50, task_num=30):
+    def __init__(self, num_vehicles=80, task_num=50):
         self.num_vehicles = num_vehicles
         self.task_num_per_episode = task_num
         self.vehicle_count = 0
@@ -30,7 +30,7 @@ class VEC_Environment(gym.Env):
         self.max_compsize = 1 #GHz
         self.max_tau = 10 # s
         self.price = 0.1
-        self.max_price = np.log(1+self.max_tau)/self.max_compsize*10
+        self.max_price = np.log(1+self.max_tau)
 
         self.action_space = spaces.Box(low=0, high=self.max_v, shape=(1,))
         self.observation_space = spaces.Dict({"num_vehicles":spaces.Discrete(self.max_v),
@@ -47,6 +47,7 @@ class VEC_Environment(gym.Env):
         self.vehicles = [] #vehicles in the range
         self.tasks = [] #tasks for offloading
         self.init_vehicles()
+        self.generate_offload_tasks()
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -58,12 +59,11 @@ class VEC_Environment(gym.Env):
             self.add_vehicle()
         self.move_vehicles()
         self.generate_local_tasks()
-        self.generate_offload_tasks()
         self.step_count = 0
         self.next_state = None
         self.reward = None
         self.done = False
-        task = self.tasks.pop()
+        task = self.tasks[0]
         self.s = {"num_vehicles":np.array(len(self.vehicles)),
         "position":np.array([v["position"] for v in self.vehicles]+[0]*(self.max_v-len(self.vehicles))),
         "velocity":np.array([v["velocity"] for v in self.vehicles]+[0]*(self.max_v-len(self.vehicles))),
@@ -76,20 +76,20 @@ class VEC_Environment(gym.Env):
         self.reward = self.compute_reward(action)
         if 0 <= int(action[0]) < len(self.vehicles):
             self.s["freq_remain"][int(action[0])] = self.vehicles[int(action[0])]["freq_remain"]
-        task = self.tasks.pop()
-        self.s["task"] = [task["data_size"],task["compute_size"],task["max_t"]]
         if self.step_count >= self.task_num_per_episode: 
             self.done = True
         else: 
             self.done = False
+            task = self.tasks[self.step_count]
+            self.s["task"] = [task["data_size"],task["compute_size"],task["max_t"]]
         return spaces.flatten(self.observation_space, self.s), self.reward, self.done, {}
 
     def compute_reward(self, action):
         """Computes the reward we would have got with this achieved goal and desired goal. Must be of this exact
         interface to fit with the open AI gym specifications"""
-        v_id = int(action[0])
-        cost = (action[0]-int(action[0]))*self.max_price + self.price
         task = self.s["task"]
+        v_id = int(action[0])
+        cost = (action[0]-int(action[0]))*self.max_price + self.price*task[1]
         reward = -np.log(1+self.max_tau)
         if v_id >= len(self.vehicles) or v_id < 0:
             return reward
@@ -99,7 +99,7 @@ class VEC_Environment(gym.Env):
             return reward
         alpha_max = v["freq_remain"]/v["freq"]
         u_max = sum([np.log(1+alpha_max*i["max_t"]) for i in v["tasks"]])
-        alpha = fsolve(lambda a:sum([np.log(1+a*i["max_t"]) for i in v["tasks"]])-u_max+(cost-self.price)*task[1],0.1)[0]
+        alpha = fsolve(lambda a:sum([np.log(1+a*i["max_t"]) for i in v["tasks"]])-u_max+ cost -self.price*task[1],0.1)[0]
         if alpha <=0:
             return reward
         freq_alloc = v["freq"]-(v["freq"]-v["freq_remain"])/(1-alpha)
@@ -108,7 +108,7 @@ class VEC_Environment(gym.Env):
         snr = self.snr_ref if abs(v["position"])<50 else self.snr_ref*(abs(v["position"])/50)**-2
         t_total = task[0]/(self.bandwidth*np.log2(1+snr)) + task[1]/freq_alloc
         if t_total <= task[2]:
-            reward = np.log(1+task[2]-t_total) - cost*task[1]
+            reward = np.log(1+task[2]-t_total) - cost
             v["freq"] -= freq_alloc
             v["freq_remain"] = v["freq"] - sum([i["compute_size"]/i["max_t"] for i in v["tasks"]])
             v["freq_remain"] = v["freq_remain"] if v["freq_remain"]>0 else 0
