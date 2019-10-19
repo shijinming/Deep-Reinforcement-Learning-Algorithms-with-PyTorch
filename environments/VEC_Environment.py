@@ -48,6 +48,7 @@ class VEC_Environment(gym.Env):
         self.tasks = [] #tasks for offloading
         self.init_vehicles()
         self.generate_offload_tasks()
+        self.generate_local_tasks()
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -55,10 +56,10 @@ class VEC_Environment(gym.Env):
 
     def reset(self):
         """Resets the environment and returns the start state"""
-        for _ in range(random.randint(1,10)):
-            self.add_vehicle()
-        self.move_vehicles()
-        self.generate_local_tasks()
+        # for _ in range(random.randint(1,10)):
+        #     self.add_vehicle()
+        # self.move_vehicles()
+        # self.generate_local_tasks()
         self.step_count = 0
         self.next_state = None
         self.reward = None
@@ -93,7 +94,6 @@ class VEC_Environment(gym.Env):
         reward = -np.log(1+self.max_tau)
         if v_id >= len(self.vehicles) or v_id < 0:
             return reward
-        print("v_id=",v_id," vehicle_num=",len(self.vehicles))
         v = self.vehicles[v_id]
         if v["freq_remain"]==0:
             return reward
@@ -112,6 +112,7 @@ class VEC_Environment(gym.Env):
             v["freq"] -= freq_alloc
             v["freq_remain"] = v["freq"] - sum([i["compute_size"]/i["max_t"] for i in v["tasks"]])
             v["freq_remain"] = v["freq_remain"] if v["freq_remain"]>0 else 0
+            print("t_total=",t_total,"reward=",reward)
         return reward
 
     def init_vehicles(self):
