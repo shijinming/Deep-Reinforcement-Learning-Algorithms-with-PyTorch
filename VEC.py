@@ -1,6 +1,6 @@
 from agents.DQN_agents.DDQN import DDQN
 from agents.actor_critic_agents.DDPG import DDPG
-from agents.actor_critic_agents.SAC import SAC
+from agents.actor_critic_agents.SAC_Discrete import SAC_Discrete
 from environments.VEC_Environment import VEC_Environment
 from agents.Trainer import Trainer
 from utilities.data_structures.Config import Config
@@ -11,7 +11,7 @@ config.seed = 1
 # embedding_dimensions = [[num_possible_states, 20]]
 # print("Num possible states ", num_possible_states)
 
-config.environment = VEC_Environment(num_vehicles=80, task_num=50)
+config.environment = VEC_Environment(num_vehicles=70, task_num=30)
 
 config.num_episodes_to_run = 1000
 config.file_to_save_data_results = "results/data_and_graphs/VEC.pkl"
@@ -25,6 +25,7 @@ config.use_GPU = True
 config.overwrite_existing_results_file = False
 config.randomise_random_seed = True
 config.save_model = True
+config.overwrite_action_size = 100 + 70
 
 # config.hyperparameters = {
 #     "DQN_Agents": {
@@ -164,9 +165,9 @@ config.hyperparameters = {
 
     "Actor_Critic_Agents": {
             "Actor": {
-                "learning_rate": 0.003,
+                "learning_rate": 0.0003,
                 "linear_hidden_units": [20, 20],
-                "final_layer_activation": None,
+                "final_layer_activation": "Softmax",
                 "batch_norm": False,
                 "tau": 0.005,
                 "gradient_clipping_norm": 5,
@@ -174,7 +175,7 @@ config.hyperparameters = {
             },
 
             "Critic": {
-                "learning_rate": 0.02,
+                "learning_rate": 0.002,
                 "linear_hidden_units": [20, 20],
                 "final_layer_activation": None,
                 "batch_norm": False,
@@ -196,7 +197,7 @@ config.hyperparameters = {
         "learning_updates_per_learning_session": 10,
         "automatically_tune_entropy_hyperparameter": True,
         "entropy_term_weight": None,
-        "add_extra_noise": True,
+        "add_extra_noise": False,
         "do_evaluation_iterations": True,
         "clip_rewards": False
 
@@ -204,6 +205,6 @@ config.hyperparameters = {
 
 }
 
-AGENTS = [DDPG] #DIAYN] # A3C] #SNN_HRL] #, DDQN]
+AGENTS = [SAC_Discrete] #DIAYN] # A3C] #SNN_HRL] #, DDQN]
 trainer = Trainer(config, AGENTS)
 trainer.run_games_for_agents()

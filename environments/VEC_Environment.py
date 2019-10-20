@@ -32,7 +32,7 @@ class VEC_Environment(gym.Env):
         self.price = 0.1
         self.max_price = np.log(1+self.max_tau)
 
-        self.action_space = spaces.Box(low=0, high=self.max_v, shape=(1,))
+        self.action_space = spaces.MultiDiscrete([self.num_vehicles, 100])
         self.observation_space = spaces.Dict({"num_vehicles":spaces.Discrete(self.max_v),
         "position":spaces.Box(0,self.maxR,shape=(self.max_v,),dtype='float32'),
         "velocity":spaces.Box(0,self.maxV,shape=(self.max_v,),dtype='float32'),
@@ -42,6 +42,7 @@ class VEC_Environment(gym.Env):
         self.reward_threshold = 0.0
         self.trials = 100
         self.max_episode_steps = 100
+        self._max_episode_steps = 100
         self.id = "VEC"
         
         self.vehicles = [] #vehicles in the range
@@ -75,8 +76,7 @@ class VEC_Environment(gym.Env):
     def step(self, action):
         self.step_count += 1
         self.reward = self.compute_reward(action)
-        if 0 <= int(action[0]) < len(self.vehicles):
-            self.s["freq_remain"][int(action[0])] = self.vehicles[int(action[0])]["freq_remain"]
+        self.s["freq_remain"][action[0]] = self.vehicles[action[0]]["freq_remain"]
         if self.step_count >= self.task_num_per_episode: 
             self.done = True
         else: 
@@ -89,8 +89,8 @@ class VEC_Environment(gym.Env):
         """Computes the reward we would have got with this achieved goal and desired goal. Must be of this exact
         interface to fit with the open AI gym specifications"""
         task = self.s["task"]
-        v_id = int(action[0])
-        cost = (action[0]-int(action[0]))*self.max_price + self.price*task[1]
+        v_id = action[0]
+        cost = action[1]/100*self.max_price + self.price*task[1]
         reward = -np.log(1+self.max_tau)
         if v_id >= len(self.vehicles) or v_id < 0:
             return reward
