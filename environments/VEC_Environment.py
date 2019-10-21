@@ -32,12 +32,12 @@ class VEC_Environment(gym.Env):
         self.price = 0.1
         self.max_price = np.log(1+self.max_tau)
 
-        self.action_space = spaces.MultiDiscrete([self.num_vehicles, 100])
-        self.observation_space = spaces.Dict({"num_vehicles":spaces.Discrete(self.max_v),
-        "position":spaces.Box(0,self.maxR,shape=(self.max_v,),dtype='float32'),
-        "velocity":spaces.Box(0,self.maxV,shape=(self.max_v,),dtype='float32'),
-        "freq_remain":spaces.Box(0,6,shape=(self.max_v,),dtype='float32'),
-        "task":spaces.Box(0,max(self.max_datasize,self.max_compsize,self.max_tau),shape=(3,),dtype='float32')})
+        self.action_space = spaces.Discrete(self.num_vehicles*100)
+        self.observation_space = spaces.Dict({
+            "snr":spaces.Box(0,self.snr_ref,shape=(self.max_v,),dtype='float32'),
+            "time_remain":spaces.Box(0,100,shape=(self.max_v,),dtype='float32'),
+            "freq_remain":spaces.Box(0,6,shape=(self.max_v,),dtype='float32'),
+            "task":spaces.Box(0,max(self.max_datasize,self.max_compsize,self.max_tau),shape=(3,),dtype='float32')})
         self.seed()
         self.reward_threshold = 0.0
         self.trials = 100
@@ -66,11 +66,11 @@ class VEC_Environment(gym.Env):
         self.reward = None
         self.done = False
         task = self.tasks[0]
-        self.s = {"num_vehicles":np.array(len(self.vehicles)),
-        "position":np.array([v["position"] for v in self.vehicles]+[0]*(self.max_v-len(self.vehicles))),
-        "velocity":np.array([v["velocity"] for v in self.vehicles]+[0]*(self.max_v-len(self.vehicles))),
-        "freq_remain":np.array([v["freq_remain"] for v in self.vehicles]+[0]*(self.max_v-len(self.vehicles))),
-        "task":np.array([task["data_size"],task["compute_size"],task["max_t"]])}
+        self.s = {
+            "snr":np.array([min(self.snr_ref*(abs(v["position"])/100)**-2, 1) for v in self.vehicles]),
+            "time_remain":np.array([min(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 100) for v in self.vehicles]),
+            "freq_remain":np.array([v["freq_remain"] for v in self.vehicles]),
+            "task":np.array([task["data_size"],task["compute_size"],task["max_t"]])}
         return spaces.flatten(self.observation_space, self.s)
 
     def step(self, action):
@@ -89,11 +89,9 @@ class VEC_Environment(gym.Env):
         """Computes the reward we would have got with this achieved goal and desired goal. Must be of this exact
         interface to fit with the open AI gym specifications"""
         task = self.s["task"]
-        v_id = action[0]
-        cost = action[1]/100*self.max_price + self.price*task[1]
+        v_id = int(action/100)
+        cost = (action/100-v_id)*self.max_price + self.price*task[1]
         reward = -np.log(1+self.max_tau)
-        if v_id >= len(self.vehicles) or v_id < 0:
-            return reward
         v = self.vehicles[v_id]
         if v["freq_remain"]==0:
             return reward
@@ -105,7 +103,7 @@ class VEC_Environment(gym.Env):
         freq_alloc = v["freq"]-(v["freq"]-v["freq_remain"])/(1-alpha)
         if freq_alloc <= 0:
             return reward
-        snr = self.snr_ref if abs(v["position"])<50 else self.snr_ref*(abs(v["position"])/50)**-2
+        snr = self.s["snr"][v_id]
         t_total = task[0]/(self.bandwidth*np.log2(1+snr)) + task[1]/freq_alloc
         if t_total <= task[2]:
             reward = np.log(1+task[2]-t_total) - cost
@@ -138,6 +136,7 @@ class VEC_Environment(gym.Env):
             self.vehicles[i]["position"] += self.vehicles[i]["velocity"]*self.max_tau
             if abs(self.vehicles[i]["position"]) >= self.maxR:
                 self.vehicles.pop(i)
+                self.add_vehicle()
 
     def generate_local_tasks(self):
         for v in self.vehicles:
