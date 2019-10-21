@@ -76,7 +76,7 @@ class VEC_Environment(gym.Env):
     def step(self, action):
         self.step_count += 1
         self.reward = self.compute_reward(action)
-        self.s["freq_remain"][action[0]] = self.vehicles[action[0]]["freq_remain"]
+        self.s["freq_remain"][action//100] = self.vehicles[action//100]["freq_remain"]
         if self.step_count >= self.task_num_per_episode: 
             self.done = True
         else: 
@@ -89,7 +89,7 @@ class VEC_Environment(gym.Env):
         """Computes the reward we would have got with this achieved goal and desired goal. Must be of this exact
         interface to fit with the open AI gym specifications"""
         task = self.s["task"]
-        v_id = int(action/100)
+        v_id = action//100
         cost = (action/100-v_id)*self.max_price + self.price*task[1]
         reward = -np.log(1+self.max_tau)
         v = self.vehicles[v_id]
