@@ -25,7 +25,7 @@ config.visualise_individual_results = False
 config.visualise_overall_agent_results = True
 config.standard_deviation_results = 1.0
 config.runs_per_agent = 3
-config.use_GPU = True
+config.use_GPU = False
 config.overwrite_existing_results_file = False
 config.randomise_random_seed = True
 config.save_model = False
@@ -93,7 +93,7 @@ config.hyperparameters = {
 }
 
 if __name__ == "__main__":
-    AGENTS = [ DDPG, PPO]
+    AGENTS = [TD3, DDPG, PPO]
     trainer = Trainer(config, AGENTS)
     trainer.run_games_for_agents()
 
