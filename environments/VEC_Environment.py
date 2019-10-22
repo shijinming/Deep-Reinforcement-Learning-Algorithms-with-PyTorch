@@ -21,14 +21,14 @@ class VEC_Environment(gym.Env):
         self.maxR = 500 #m, max relative distance between request vehicle and other vehicles
         self.maxV = 30 #km/h, max relative velocity between requst vehicle and other vehicles
         self.max_v = 80 # maximum vehicles in the communication range of request vehicle
-        self.max_local_task = 30
+        self.max_local_task = 1
         self.bandwidth = 6 # MHz
         self.snr_ref = 1 # reference SNR, which is used to compute rate by B*log2(1+snr_ref*d^-a) 
         self.snr_alpha = 2
         self.vehicle_F = range(2,7)  #GHz
-        self.max_datasize = 10 #MBytes
-        self.max_compsize = 1 #GHz
-        self.max_tau = 10 # s
+        self.max_datasize = 2 #MBytes
+        self.max_compsize = 0.2 #GHz
+        self.max_tau = 5 # s
         self.price = 0.1
         self.max_price = np.log(1+self.max_tau)
 
@@ -67,7 +67,7 @@ class VEC_Environment(gym.Env):
         self.done = False
         task = self.tasks[0]
         self.s = {
-            "snr":np.array([min(self.snr_ref*(abs(v["position"])/100)**-2, 1) for v in self.vehicles]),
+            "snr":np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles]),
             "time_remain":np.array([min(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 100) for v in self.vehicles]),
             "freq_remain":np.array([v["freq_remain"] for v in self.vehicles]),
             "task":np.array([task["data_size"],task["compute_size"],task["max_t"]])}
@@ -105,12 +105,13 @@ class VEC_Environment(gym.Env):
             return reward
         snr = self.s["snr"][v_id]
         t_total = task[0]/(self.bandwidth*np.log2(1+snr)) + task[1]/freq_alloc
+        # print("computing time=",task[1]/freq_alloc,"freq_min=",task[1]/task[2])
         if t_total <= task[2]:
             reward = np.log(1+task[2]-t_total) - cost
             v["freq"] -= freq_alloc
             v["freq_remain"] = v["freq"] - sum([i["compute_size"]/i["max_t"] for i in v["tasks"]])
             v["freq_remain"] = v["freq_remain"] if v["freq_remain"]>0 else 0
-            print("t_total=",t_total,"reward=",reward)
+            # print("t_total=",t_total,"reward=",reward)
         return reward
 
     def init_vehicles(self):
@@ -141,17 +142,17 @@ class VEC_Environment(gym.Env):
     def generate_local_tasks(self):
         for v in self.vehicles:
             v["tasks"] = []
-            for _ in range(random.randint(round(self.max_local_task/10),self.max_local_task)):
-                data_size = random.uniform(self.max_datasize/10,self.max_datasize)
-                compute_size = random.uniform(self.max_compsize/10,self.max_compsize)
-                max_t = random.uniform(self.max_tau/10,self.max_tau)
+            for _ in range(random.randint(0,self.max_local_task)):
+                data_size = random.uniform(self.max_datasize/5,self.max_datasize)
+                compute_size = random.uniform(self.max_compsize/5,self.max_compsize)
+                max_t = random.randint(1, self.max_tau)
                 v["tasks"].append({"data_size":data_size, "compute_size":compute_size, "max_t":max_t})
             v["freq_remain"] = v["freq_init"] - sum([i["compute_size"]/i["max_t"] for i in v["tasks"]])
             v["freq_remain"] = v["freq_remain"] if v["freq_remain"]>0 else 0
     
     def generate_offload_tasks(self):
         for _ in range(self.task_num_per_episode):
-            data_size = random.uniform(self.max_datasize/10,self.max_datasize)
-            compute_size = random.uniform(self.max_compsize/10,self.max_compsize)
-            max_t = random.uniform(self.max_tau/10,self.max_tau)
+            data_size = random.uniform(self.max_datasize/5,self.max_datasize)
+            compute_size = random.uniform(self.max_compsize/5,self.max_compsize)
+            max_t = random.randint(1, self.max_tau)
             self.tasks.append({"data_size":data_size, "compute_size":compute_size, "max_t":max_t})

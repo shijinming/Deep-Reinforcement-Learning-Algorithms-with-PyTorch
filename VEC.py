@@ -13,9 +13,9 @@ config.seed = 1
 # embedding_dimensions = [[num_possible_states, 20]]
 # print("Num possible states ", num_possible_states)
 
-config.environment = VEC_Environment(num_vehicles=30, task_num=20)
+config.environment = VEC_Environment(num_vehicles=50, task_num=20)
 
-config.num_episodes_to_run = 1000
+config.num_episodes_to_run = 100
 config.file_to_save_data_results = "results/data_and_graphs/VEC.pkl"
 config.file_to_save_results_graph = "results/data_and_graphs/VEC.png"
 config.show_solution_score = False
@@ -26,11 +26,48 @@ config.runs_per_agent = 1
 config.use_GPU = True
 config.overwrite_existing_results_file = False
 config.randomise_random_seed = True
-config.save_model = True
-config.overwrite_action_size = 100 + 70
+config.save_model = False
 
+config.hyperparameters = {
+        "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
+        "Actor": {
+            "learning_rate": 0.001,
+            "linear_hidden_units": [400, 300],
+            "final_layer_activation": "Softmax",
+            "batch_norm": False,
+            "tau": 0.01,
+            "gradient_clipping_norm": 5
+        },
 
+        "Critic": {
+            "learning_rate": 0.01,
+            "linear_hidden_units": [400, 300],
+            "final_layer_activation": None,
+            "batch_norm": False,
+            "buffer_size": 100000,
+            "tau": 0.01,
+            "gradient_clipping_norm": 5
+        },
 
-AGENTS = [A3C] #DIAYN] # A3C] #SNN_HRL] #, DDQN]
+        "min_steps_before_learning": 400,
+        "batch_size": 256,
+        "discount_rate": 0.99,
+        "mu": 0.0, #for O-H noise
+        "theta": 0.15, #for O-H noise
+        "sigma": 0.25, #for O-H noise
+        "action_noise_std": 0.2,  # for TD3
+        "action_noise_clipping_range": 0.5,  # for TD3
+        "update_every_n_steps": 1,
+        "learning_updates_per_learning_session": 1,
+        "automatically_tune_entropy_hyperparameter": True,
+        "entropy_term_weight": None,
+        "add_extra_noise": False,
+        "do_evaluation_iterations": True,
+        "clip_rewards":False 
+
+    }
+}
+
+AGENTS = [SAC_Discrete] #DIAYN] # A3C] #SNN_HRL] #, DDQN]
 trainer = Trainer(config, AGENTS)
 trainer.run_games_for_agents()

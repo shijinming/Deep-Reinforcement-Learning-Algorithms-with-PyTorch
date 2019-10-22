@@ -1,3 +1,8 @@
+import os
+import sys
+from os.path import dirname, abspath
+sys.path.append(dirname(dirname(abspath(__file__))))
+
 import gym
 
 from agents.policy_gradient_agents.PPO import PPO
@@ -11,6 +16,7 @@ from utilities.data_structures.Config import Config
 config = Config()
 config.seed = 1
 config.environment = gym.make("MountainCarContinuous-v0")
+config.environment.spec.trials = 100
 config.num_episodes_to_run = 450
 config.file_to_save_data_results = None
 config.file_to_save_results_graph = None
@@ -19,7 +25,7 @@ config.visualise_individual_results = False
 config.visualise_overall_agent_results = True
 config.standard_deviation_results = 1.0
 config.runs_per_agent = 3
-config.use_GPU = False
+config.use_GPU = True
 config.overwrite_existing_results_file = False
 config.randomise_random_seed = True
 config.save_model = False
@@ -87,7 +93,7 @@ config.hyperparameters = {
 }
 
 if __name__ == "__main__":
-    AGENTS = [TD3, DDPG, PPO]
+    AGENTS = [ DDPG, PPO]
     trainer = Trainer(config, AGENTS)
     trainer.run_games_for_agents()
 
