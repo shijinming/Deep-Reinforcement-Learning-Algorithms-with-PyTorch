@@ -15,7 +15,7 @@ config.seed = 1
 
 config.environment = VEC_Environment(num_vehicles=50, task_num=20)
 
-config.num_episodes_to_run = 100
+config.num_episodes_to_run = 1000
 config.file_to_save_data_results = "results/data_and_graphs/VEC.pkl"
 config.file_to_save_results_graph = "results/data_and_graphs/VEC.png"
 config.show_solution_score = False
