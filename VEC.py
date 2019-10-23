@@ -15,7 +15,7 @@ config.seed = 1
 
 config.environment = VEC_Environment(num_vehicles=50, task_num=20)
 
-config.num_episodes_to_run = 1000
+config.num_episodes_to_run = 3000
 config.file_to_save_data_results = "results/data_and_graphs/VEC.pkl"
 config.file_to_save_results_graph = "results/data_and_graphs/VEC.png"
 config.show_solution_score = False
@@ -27,6 +27,7 @@ config.use_GPU = True
 config.overwrite_existing_results_file = False
 config.randomise_random_seed = True
 config.save_model = False
+config.device = "cuda:0"
 
 config.hyperparameters = {
         "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf

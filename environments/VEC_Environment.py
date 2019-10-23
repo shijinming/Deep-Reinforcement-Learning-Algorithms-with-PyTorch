@@ -29,7 +29,7 @@ class VEC_Environment(gym.Env):
         self.max_datasize = 1 #MBytes
         self.max_compsize = 0.1 #GHz
         self.max_tau = 10 # s
-        self.price = 0
+        self.price = 0.1
         self.max_price = np.log(1+self.max_tau)
 
         self.action_space = spaces.Discrete(self.num_vehicles*100)
@@ -48,8 +48,8 @@ class VEC_Environment(gym.Env):
         self.vehicles = [] #vehicles in the range
         self.tasks = [] #tasks for offloading
         self.init_vehicles()
-        self.generate_offload_tasks()
-        self.generate_local_tasks()
+        # self.generate_offload_tasks()
+        # self.generate_local_tasks()
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -59,21 +59,22 @@ class VEC_Environment(gym.Env):
         """Resets the environment and returns the start state"""
         # for _ in range(random.randint(1,10)):
         #     self.add_vehicle()
-        # self.move_vehicles()
-        # self.generate_local_tasks()
+        self.move_vehicles()
+        self.generate_local_tasks()
+        self.generate_offload_tasks()
         self.step_count = 0
         self.next_state = None
         self.reward = None
         self.done = False
         for v in self.vehicles:
             v["freq"] = v["freq_init"]
-            v["freq_remain"] = max(0, v["freq_init"] - sum([i["compute_size"]/i["max_t"] for i in v["tasks"]]))
+            v["freq_remain"] = max(0, v["freq_init"] - sum([i[1]/i[2] for i in v["tasks"]]))
         task = self.tasks[0]
         self.s = {
             "snr":np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles]),
             "time_remain":np.array([min(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 100) for v in self.vehicles]),
             "freq_remain":np.array([v["freq_remain"] for v in self.vehicles]),
-            "task":np.array([task["data_size"],task["compute_size"],task["max_t"]])}
+            "task":np.array(task)}
         return spaces.flatten(self.observation_space, self.s)
 
     def step(self, action):
@@ -85,7 +86,7 @@ class VEC_Environment(gym.Env):
         else: 
             self.done = False
             task = self.tasks[self.step_count]
-            self.s["task"] = [task["data_size"],task["compute_size"],task["max_t"]]
+            self.s["task"] = np.array(task)
         return spaces.flatten(self.observation_space, self.s), self.reward, self.done, {}
 
     def compute_reward(self, action):
@@ -94,27 +95,25 @@ class VEC_Environment(gym.Env):
         task = self.s["task"]
         v_id = action//100
         cost = (action/100-v_id)*self.max_price + self.price*task[1]
-        reward = -np.log(1+self.max_tau)
+        reward = -np.log(1+self.max_tau)*10
         v = self.vehicles[v_id]
         if v["freq_remain"]==0:
             return reward
         alpha_max = v["freq_remain"]/v["freq"]
-        u_max = sum([np.log(1+alpha_max*i["max_t"]) for i in v["tasks"]])
-        alpha = fsolve(lambda a:sum([np.log(1+a*i["max_t"]) for i in v["tasks"]])-u_max+ cost -self.price*task[1], 0)[0]
+        u_max = sum([np.log(1+alpha_max*i[2]) for i in v["tasks"]])
+        alpha = fsolve(lambda a:sum([np.log(1+a*i[2]) for i in v["tasks"]])-u_max+ cost -self.price*task[1], 0.001)[0]
         alpha = min(max(0,alpha), alpha_max)
         freq_alloc = v["freq"]-(v["freq"]-v["freq_remain"])/(1-alpha)
-        # print(alpha_max,alpha,freq_alloc)
         if freq_alloc <= 0:
-            print("freq_alloc<=0",freq_alloc,v["freq"],v["freq_remain"],alpha)
             return reward
         snr = self.s["snr"][v_id]
         t_total = task[0]/(self.bandwidth*np.log2(1+snr)) + task[1]/freq_alloc
-        # print("computing time=",task[1]/freq_alloc,"freq_min=",task[1]/task[2], "freq_alloc=",freq_alloc, "alpha=",alpha)
         if t_total <= task[2]:
             reward = np.log(1+task[2]-t_total) - cost
             v["freq"] -= freq_alloc
-            v["freq_remain"] = max(0, v["freq"] - sum([i["compute_size"]/i["max_t"] for i in v["tasks"]]))
-            # print("t_total=",t_total,"reward=",reward)
+            v["freq_remain"] = max(0, v["freq"] - sum([i[1]/i[2] for i in v["tasks"]]))
+            if reward <= 0:
+                print("t_total=",t_total,"reward=",reward)
         return reward
 
     def init_vehicles(self):
@@ -148,12 +147,13 @@ class VEC_Environment(gym.Env):
             for _ in range(random.randint(1,self.max_local_task)):
                 data_size = random.uniform(self.max_datasize/5,self.max_datasize)
                 compute_size = random.uniform(self.max_compsize/5,self.max_compsize)
-                max_t = random.randint(self.max_tau//2, self.max_tau)
-                v["tasks"].append({"data_size":data_size, "compute_size":compute_size, "max_t":max_t})
+                max_t = random.randint(self.max_tau//2, self.max_tau//2)
+                v["tasks"].append([data_size, compute_size, max_t])
     
     def generate_offload_tasks(self):
+        self.tasks = []
         for _ in range(self.task_num_per_episode):
             data_size = random.uniform(self.max_datasize/5,self.max_datasize)
             compute_size = random.uniform(self.max_compsize/5,self.max_compsize)
             max_t = random.randint(self.max_tau//2, self.max_tau)
-            self.tasks.append({"data_size":data_size, "compute_size":compute_size, "max_t":max_t})
+            self.tasks.append([data_size, compute_size, max_t])
