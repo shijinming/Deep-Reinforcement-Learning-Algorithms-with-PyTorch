@@ -79,10 +79,10 @@ class VEC_Environment(gym.Env):
             "task":np.array(task)}
         return spaces.flatten(self.observation_space, self.s)
 
-    def step(self, action):
+    def step(self, action, price_level=50):
         self.step_count += 1
         # print("action=",action)
-        self.reward = self.compute_reward(action)
+        self.reward = self.compute_reward(action, price_level)
         self.s["freq_remain"][action//self.price_level] = self.vehicles[action//self.price_level]["freq_remain"]
         if self.step_count >= self.task_num_per_episode: 
             self.done = True
@@ -92,14 +92,14 @@ class VEC_Environment(gym.Env):
             self.s["task"] = np.array(task)
         return spaces.flatten(self.observation_space, self.s), self.reward, self.done, {}
 
-    def compute_reward(self, action):
+    def compute_reward(self, action, price_level):
         """Computes the reward we would have got with this achieved goal and desired goal. Must be of this exact
         interface to fit with the open AI gym specifications"""
         task = self.s["task"]
         # v_id = action//self.price_level
         # cost = (action%self.price_level)/self.price_level*self.max_price + self.price*task[1]
         v_id = action
-        cost = 0.5*self.max_price + self.price*task[1]
+        cost = price_level/100*self.max_price + self.price*task[1]
         reward = -np.log(1+self.max_tau)
         v = self.vehicles[v_id]
         if v["freq_remain"]==0:
@@ -165,7 +165,7 @@ class VEC_Environment(gym.Env):
 
     def produce_action(self, action_type):
         if action_type=="random":
-            return self.action_space.sample()//100*100 + 50
+            return self.action_space.sample()
         elif action_type=="greedy":
-            return np.argmax(self.s["freq_remain"])*100 + 50
+            return np.argmax(self.s["freq_remain"])
         

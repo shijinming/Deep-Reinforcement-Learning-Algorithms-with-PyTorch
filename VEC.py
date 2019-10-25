@@ -60,7 +60,7 @@ config.hyperparameters = {
         },
 
         "Critic": {
-            "learning_rate": 0.0001,
+            "learning_rate": 0.00001,
             "linear_hidden_units": [200, 50],
             "final_layer_activation": None,
             "batch_norm": False,
@@ -69,7 +69,7 @@ config.hyperparameters = {
             "gradient_clipping_norm": 5
         },
 
-        "min_steps_before_learning": 500,
+        "min_steps_before_learning": 100,
         "batch_size": 256,
         "discount_rate": 0.99,
         "mu": 0.0, #for O-H noise
