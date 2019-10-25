@@ -10,12 +10,14 @@ from utilities.data_structures.Config import Config
 config = Config()
 config.seed = 1
     
+num_vehicles = 20
+task_num = 50
 # embedding_dimensions = [[num_possible_states, 20]]
 # print("Num possible states ", num_possible_states)
+embedding_dimensions = [[num_vehicles*3+3, 50]]
+config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
 
-config.environment = VEC_Environment(num_vehicles=50, task_num=20)
-
-config.num_episodes_to_run = 3000
+config.num_episodes_to_run = 1000
 config.file_to_save_data_results = "results/data_and_graphs/VEC.pkl"
 config.file_to_save_results_graph = "results/data_and_graphs/VEC.png"
 config.show_solution_score = False
@@ -30,10 +32,27 @@ config.save_model = False
 config.device = "cuda:0"
 
 config.hyperparameters = {
+    "DQN_Agents": {
+        "learning_rate": 0.0001,
+        "batch_size": 256,
+        "buffer_size": 100000,
+        "epsilon_decay_rate_denominator": 150,
+        "discount_rate": 0.999,
+        "incremental_td_error": 1e-8,
+        "update_every_n_steps": 1,
+        "linear_hidden_units": [32, 32],
+        "final_layer_activation": None,
+        "batch_norm": False,
+        "gradient_clipping_norm": 5,
+        "HER_sample_proportion": 0.8,
+        "learning_iterations": 1,
+        "clip_rewards": False,
+        "tau":0.01
+    },
         "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
-            "learning_rate": 0.001,
-            "linear_hidden_units": [400, 300],
+            "learning_rate": 0.00001,
+            "linear_hidden_units": [200, 50],
             "final_layer_activation": "Softmax",
             "batch_norm": False,
             "tau": 0.01,
@@ -41,8 +60,8 @@ config.hyperparameters = {
         },
 
         "Critic": {
-            "learning_rate": 0.01,
-            "linear_hidden_units": [400, 300],
+            "learning_rate": 0.0001,
+            "linear_hidden_units": [200, 50],
             "final_layer_activation": None,
             "batch_norm": False,
             "buffer_size": 100000,
@@ -50,7 +69,7 @@ config.hyperparameters = {
             "gradient_clipping_norm": 5
         },
 
-        "min_steps_before_learning": 400,
+        "min_steps_before_learning": 500,
         "batch_size": 256,
         "discount_rate": 0.99,
         "mu": 0.0, #for O-H noise
@@ -63,7 +82,7 @@ config.hyperparameters = {
         "automatically_tune_entropy_hyperparameter": True,
         "entropy_term_weight": None,
         "add_extra_noise": False,
-        "do_evaluation_iterations": True,
+        "do_evaluation_iterations": False,
         "clip_rewards":False 
 
     }

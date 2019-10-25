@@ -33,16 +33,15 @@ class VEC_Environment(gym.Env):
         self.max_price = np.log(1+self.max_tau)/20
         self.price_level = 100
 
-        # self.action_space = spaces.Discrete(self.num_vehicles*self.price_level)
-        self.action_space = spaces.Discrete(self.num_vehicles)
+        self.action_space = spaces.Discrete(self.num_vehicles*self.price_level)
         self.observation_space = spaces.Dict({
-            "snr":spaces.Box(0,self.snr_ref,shape=(self.num_vehicles,),dtype='float32'),
-            "time_remain":spaces.Box(0,100,shape=(self.num_vehicles,),dtype='float32'),
-            "freq_remain":spaces.Box(0,6,shape=(self.num_vehicles,),dtype='float32'),
+            "snr":spaces.Box(0,self.snr_ref,shape=(self.max_v,),dtype='float32'),
+            "time_remain":spaces.Box(0,100,shape=(self.max_v,),dtype='float32'),
+            "freq_remain":spaces.Box(0,6,shape=(self.max_v,),dtype='float32'),
             "task":spaces.Box(0,max(self.max_datasize,self.max_compsize,self.max_tau),shape=(3,),dtype='float32')})
         self.seed()
         self.reward_threshold = 0.0
-        self.trials = 100
+        self.trials = 50
         self.max_episode_steps = 100
         self._max_episode_steps = 100
         self.id = "VEC"
@@ -81,7 +80,6 @@ class VEC_Environment(gym.Env):
 
     def step(self, action):
         self.step_count += 1
-        # print("action=",action)
         self.reward = self.compute_reward(action)
         self.s["freq_remain"][action//self.price_level] = self.vehicles[action//self.price_level]["freq_remain"]
         if self.step_count >= self.task_num_per_episode: 
@@ -96,10 +94,8 @@ class VEC_Environment(gym.Env):
         """Computes the reward we would have got with this achieved goal and desired goal. Must be of this exact
         interface to fit with the open AI gym specifications"""
         task = self.s["task"]
-        # v_id = action//self.price_level
-        # cost = (action%self.price_level)/self.price_level*self.max_price + self.price*task[1]
-        v_id = action
-        cost = 0.5*self.max_price + self.price*task[1]
+        v_id = action//self.price_level
+        cost = (action%self.price_level)/self.price_level*self.max_price + self.price*task[1]
         reward = -np.log(1+self.max_tau)
         v = self.vehicles[v_id]
         if v["freq_remain"]==0:
@@ -131,7 +127,7 @@ class VEC_Environment(gym.Env):
             self.vehicles.append({"id":self.vehicle_count, "position":v_p, "velocity":v_v, "freq_init":v_f, "freq":v_f, "freq_remain":0, "tasks":[]})
 
     def add_vehicle(self):
-        if len(self.vehicles) <= self.num_vehicles:
+        if len(self.vehicles) <= self.max_v:
             self.vehicle_count += 1
             v_f = np.random.choice(self.vehicle_F)
             v_v = random.uniform(-self.maxV,self.maxV)
@@ -168,4 +164,25 @@ class VEC_Environment(gym.Env):
             return self.action_space.sample()//100*100 + 50
         elif action_type=="greedy":
             return np.argmax(self.s["freq_remain"])*100 + 50
-        
+
+num_vehicles = 20
+task_num = 50
+num_episode = 2000
+trials = 100
+action_type = ["random","greedy"]
+results = [[],[]]
+rollings = [[],[]]
+for i in range(2):
+    env = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
+    for _ in range(num_episode):
+        env.reset()
+        reward = 0
+        for _ in range(task_num):
+            _,r,_,_=env.step(env.produce_action(action_type[i]))
+            reward+=r
+        results[i].append(reward)
+        rollings[i].append(np.mean(results[i][-trials:]))
+pyplot.plot(rollings[0],label="random")
+pyplot.plot(rollings[1],label="greedy")
+pyplot.legend()
+pyplot.savefig("results/data_and_graphs/VEC_greedy.png")
