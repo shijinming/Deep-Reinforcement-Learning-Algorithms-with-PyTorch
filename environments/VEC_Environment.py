@@ -33,8 +33,7 @@ class VEC_Environment(gym.Env):
         self.max_price = np.log(1+self.max_tau)/20
         self.price_level = 100
 
-        # self.action_space = spaces.Discrete(self.num_vehicles*self.price_level)
-        self.action_space = spaces.Discrete(self.num_vehicles)
+        self.action_space = spaces.Discrete(self.num_vehicles*self.price_level)
         self.observation_space = spaces.Dict({
             "snr":spaces.Box(0,self.snr_ref,shape=(self.num_vehicles,),dtype='float32'),
             "time_remain":spaces.Box(0,100,shape=(self.num_vehicles,),dtype='float32'),
@@ -79,10 +78,10 @@ class VEC_Environment(gym.Env):
             "task":np.array(task)}
         return spaces.flatten(self.observation_space, self.s)
 
-    def step(self, action, price_level=50):
+    def step(self, action):
         self.step_count += 1
         # print("action=",action)
-        self.reward = self.compute_reward(action, price_level)
+        self.reward = self.compute_reward(action)
         self.s["freq_remain"][action//self.price_level] = self.vehicles[action//self.price_level]["freq_remain"]
         if self.step_count >= self.task_num_per_episode: 
             self.done = True
@@ -92,14 +91,12 @@ class VEC_Environment(gym.Env):
             self.s["task"] = np.array(task)
         return spaces.flatten(self.observation_space, self.s), self.reward, self.done, {}
 
-    def compute_reward(self, action, price_level):
+    def compute_reward(self, action):
         """Computes the reward we would have got with this achieved goal and desired goal. Must be of this exact
         interface to fit with the open AI gym specifications"""
         task = self.s["task"]
-        # v_id = action//self.price_level
-        # cost = (action%self.price_level)/self.price_level*self.max_price + self.price*task[1]
-        v_id = action
-        cost = price_level/100*self.max_price + self.price*task[1]
+        v_id = action//self.price_level
+        cost = (1 + (action%self.price_level)/self.price_level)*self.price*task[1]
         reward = -np.log(1+self.max_tau)
         v = self.vehicles[v_id]
         if v["freq_remain"]==0:
@@ -163,9 +160,9 @@ class VEC_Environment(gym.Env):
             max_t = random.uniform(self.max_tau/5, self.max_tau)
             self.tasks.append([data_size, compute_size, max_t])
 
-    def produce_action(self, action_type):
+    def produce_action(self, action_type, price_level):
         if action_type=="random":
-            return self.action_space.sample()
+            return self.action_space.sample()//self.price_level*self.price_level + price_level
         elif action_type=="greedy":
-            return np.argmax(self.s["freq_remain"])
+            return np.argmax(self.s["freq_remain"])*self.price_level + price_level
         
