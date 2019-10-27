@@ -21,7 +21,7 @@ class VEC_Environment(gym.Env):
         self.maxR = 500 #m, max relative distance between request vehicle and other vehicles
         self.maxV = 30 #km/h, max relative velocity between requst vehicle and other vehicles
         self.max_v = 80 # maximum vehicles in the communication range of request vehicle
-        self.max_local_task = 1
+        self.max_local_task = 10
         self.bandwidth = 6 # MHz
         self.snr_ref = 1 # reference SNR, which is used to compute rate by B*log2(1+snr_ref*d^-a) 
         self.snr_alpha = 2
@@ -31,13 +31,14 @@ class VEC_Environment(gym.Env):
         self.max_tau = 2 # s
         self.price = 0.1
         self.max_price = np.log(1+self.max_tau)/20
-        self.price_level = 100
+        self.price_level = 10
 
         self.action_space = spaces.Discrete(self.num_vehicles*self.price_level)
         self.observation_space = spaces.Dict({
             "snr":spaces.Box(0,self.snr_ref,shape=(self.num_vehicles,),dtype='float32'),
             "time_remain":spaces.Box(0,100,shape=(self.num_vehicles,),dtype='float32'),
             "freq_remain":spaces.Box(0,6,shape=(self.num_vehicles,),dtype='float32'),
+            "u_max":spaces.Box(0,self.max_local_task*self.max_tau,shape=(self.num_vehicles,),dtype='float32'),
             "task":spaces.Box(0,max(self.max_datasize,self.max_compsize,self.max_tau),shape=(3,),dtype='float32')})
         self.seed()
         self.reward_threshold = 0.0
@@ -70,11 +71,14 @@ class VEC_Environment(gym.Env):
         for v in self.vehicles:
             v["freq"] = v["freq_init"]
             v["freq_remain"] = max(0, v["freq_init"] - sum([i[1]/i[2] for i in v["tasks"]]))
+            alpha_max = v["freq_remain"]/v["freq"]
+            v["u_max"] = sum([np.log(1+alpha_max*i[2]) for i in v["tasks"]])
         task = self.tasks[0]
         self.s = {
             "snr":np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles]),
             "time_remain":np.array([min(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 100) for v in self.vehicles]),
             "freq_remain":np.array([v["freq_remain"] for v in self.vehicles]),
+            "u_max":np.array([v["u_max"] for v in self.vehicles]),
             "task":np.array(task)}
         return spaces.flatten(self.observation_space, self.s)
 
@@ -82,7 +86,9 @@ class VEC_Environment(gym.Env):
         self.step_count += 1
         # print("action=",action)
         self.reward = self.compute_reward(action)
-        self.s["freq_remain"][action//self.price_level] = self.vehicles[action//self.price_level]["freq_remain"]
+        v_id = action//self.price_level
+        self.s["freq_remain"][v_id] = self.vehicles[v_id]["freq_remain"]
+        self.s["u_max"][v_id] = self.vehicles[v_id]["u_max"]
         if self.step_count >= self.task_num_per_episode: 
             self.done = True
         else: 
@@ -114,6 +120,8 @@ class VEC_Environment(gym.Env):
             reward = np.log(1+task[2]-t_total) - cost
             v["freq"] -= freq_alloc
             v["freq_remain"] = max(0, v["freq"] - sum([i[1]/i[2] for i in v["tasks"]]))
+            alpha_max = v["freq_remain"]/v["freq"]
+            v["u_max"] = sum([np.log(1+alpha_max*i[2]) for i in v["tasks"]])
             # if reward <= 0:
             #     print("t_total=",t_total,"reward=",reward)
         return reward
@@ -125,7 +133,7 @@ class VEC_Environment(gym.Env):
             v_p = random.uniform(-self.maxR,self.maxR)
             v_v = random.uniform(-self.maxV,self.maxV)
             v_v = v_v if v_v!=0 else random.choice([-0.1, 0.1])
-            self.vehicles.append({"id":self.vehicle_count, "position":v_p, "velocity":v_v, "freq_init":v_f, "freq":v_f, "freq_remain":0, "tasks":[]})
+            self.vehicles.append({"id":self.vehicle_count, "position":v_p, "velocity":v_v, "freq_init":v_f, "freq":v_f, "freq_remain":0, "tasks":[], "u_max":0})
 
     def add_vehicle(self):
         if len(self.vehicles) <= self.num_vehicles:
@@ -134,7 +142,7 @@ class VEC_Environment(gym.Env):
             v_v = random.uniform(-self.maxV,self.maxV)
             v_v = v_v if v_v!=0 else random.choice([-0.1, 0.1])
             v_p = -self.maxR if v_v>0 else self.maxR
-            self.vehicles.append({"id":self.vehicle_count, "position":v_p, "velocity":v_v, "freq_init":v_f, "freq":v_f, "freq_remain":0, "tasks":[]})
+            self.vehicles.append({"id":self.vehicle_count, "position":v_p, "velocity":v_v, "freq_init":v_f, "freq":v_f, "freq_remain":0, "tasks":[], "u_max":0})
 
     def move_vehicles(self):
         for i in range(len(self.vehicles)-1,-1,-1):
