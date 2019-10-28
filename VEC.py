@@ -6,18 +6,45 @@ from agents.DQN_agents.DDQN import DDQN
 from environments.VEC_Environment import VEC_Environment
 from agents.Trainer import Trainer
 from utilities.data_structures.Config import Config
+import matplotlib.pyplot as plt
+from environments.VEC_Environment import VEC_Environment
+import numpy as np
 
 config = Config()
 config.seed = 1
     
 num_vehicles = 20
-task_num = 50
+task_num = 30
 # embedding_dimensions = [[num_possible_states, 20]]
 # print("Num possible states ", num_possible_states)
 embedding_dimensions = [[num_vehicles*3+3, 50]]
 config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
 
-config.num_episodes_to_run = 5000
+num_episode = 1000
+trials = 100
+action_type = ["random", "greedy"]
+env = config.environment
+for i in action_type:
+    print(i)
+    plt.figure()
+    plt.title("VEC_{}".format(i))
+    for price_level in range(1,10):
+        results = []
+        rollings = []
+        for _ in range(num_episode):
+            env.reset()
+            reward = 0
+            for _ in range(task_num):
+                _,r,_,_=env.step(env.produce_action(i, price_level))
+                reward+=r
+            results.append(reward)
+            rollings.append(np.mean(results[-trials:]))
+        plt.plot(rollings[50:],label=str(price_level))
+        print("price=", price_level, "mean_reward=", np.mean(results))
+    plt.legend()
+    plt.savefig("results/data_and_graphs/VEC_{}.png".format(i))
+
+config.num_episodes_to_run = 10000
 config.file_to_save_data_results = "results/data_and_graphs/VEC.pkl"
 config.file_to_save_results_graph = "results/data_and_graphs/VEC.png"
 config.show_solution_score = False
@@ -51,21 +78,21 @@ config.hyperparameters = {
     },
         "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
-            "learning_rate": 0.0002,
-            "linear_hidden_units": [64, 64],
+            "learning_rate": 0.0005,
+            "linear_hidden_units": [64, 64, 64, 64],
             "final_layer_activation": "Softmax",
             "batch_norm": False,
-            "tau": 0.01,
+            "tau": 0.005,
             "gradient_clipping_norm": 5
         },
 
         "Critic": {
-            "learning_rate": 0.0005,
-            "linear_hidden_units": [64, 64],
+            "learning_rate": 0.001,
+            "linear_hidden_units": [64, 64, 64, 64],
             "final_layer_activation": None,
             "batch_norm": False,
             "buffer_size": 100000,
-            "tau": 0.01,
+            "tau": 0.005,
             "gradient_clipping_norm": 5
         },
 

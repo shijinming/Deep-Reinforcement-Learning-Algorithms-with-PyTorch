@@ -50,8 +50,8 @@ class VEC_Environment(gym.Env):
         self.vehicles = [] #vehicles in the range
         self.tasks = [] #tasks for offloading
         self.init_vehicles()
-        # self.generate_offload_tasks()
-        # self.generate_local_tasks()
+        self.generate_offload_tasks()
+        self.generate_local_tasks()
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -61,9 +61,9 @@ class VEC_Environment(gym.Env):
         """Resets the environment and returns the start state"""
         # for _ in range(random.randint(1,10)):
         #     self.add_vehicle()
-        self.move_vehicles()
-        self.generate_local_tasks()
-        self.generate_offload_tasks()
+        # self.move_vehicles()
+        # self.generate_local_tasks()
+        # self.generate_offload_tasks()
         self.step_count = 0
         self.next_state = None
         self.reward = None
@@ -102,7 +102,7 @@ class VEC_Environment(gym.Env):
         interface to fit with the open AI gym specifications"""
         task = self.s["task"]
         v_id = action//self.price_level
-        cost = (1 + (action%self.price_level)/self.price_level)*self.price*task[1]
+        cost = (1 + action%self.price_level)*self.price*task[1]
         reward = -np.log(1+self.max_tau)
         v = self.vehicles[v_id]
         if v["freq_remain"]==0:
