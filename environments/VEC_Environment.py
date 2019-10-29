@@ -21,14 +21,17 @@ class VEC_Environment(gym.Env):
         self.maxR = 500 #m, max relative distance between request vehicle and other vehicles
         self.maxV = 30 #km/h, max relative velocity between requst vehicle and other vehicles
         self.max_v = 80 # maximum vehicles in the communication range of request vehicle
-        self.max_local_task = 10
+        self.max_local_task = 6
         self.bandwidth = 6 # MHz
         self.snr_ref = 1 # reference SNR, which is used to compute rate by B*log2(1+snr_ref*d^-a) 
         self.snr_alpha = 2
         self.vehicle_F = range(5,16)  #GHz
-        self.max_datasize = 0.2 #MBytes
-        self.max_compsize = 1 #GHz
-        self.max_tau = 2 # s
+        self.data_size = [0.05, 0.1, 0.15, 0.2] #MBytes
+        self.comp_size = [0.2, 0.4, 0.6, 0.8, 1] #GHz
+        self.tau = [0.5, 1, 1.5, 2] #s
+        self.max_datasize = max(self.data_size)
+        self.max_compsize = max(self.comp_size)
+        self.max_tau = max(self.tau)
         self.price = 0.1
         self.max_price = np.log(1+self.max_tau)/20
         self.price_level = 10
@@ -155,17 +158,17 @@ class VEC_Environment(gym.Env):
         for v in self.vehicles:
             v["tasks"] = []
             for _ in range(random.randint(1,self.max_local_task)):
-                data_size = random.uniform(self.max_datasize/5,self.max_datasize)
-                compute_size = random.uniform(self.max_compsize/5,self.max_compsize)
-                max_t = random.uniform(self.max_tau/5, self.max_tau)
+                data_size = random.choice(self.data_size)
+                compute_size = random.choice(self.comp_size)
+                max_t = random.choice(self.tau)
                 v["tasks"].append([data_size, compute_size, max_t])
     
     def generate_offload_tasks(self):
         self.tasks = []
         for _ in range(self.task_num_per_episode):
-            data_size = random.uniform(self.max_datasize/5,self.max_datasize)
-            compute_size = random.uniform(self.max_compsize/5,self.max_compsize)
-            max_t = random.uniform(self.max_tau/5, self.max_tau)
+            data_size = random.choice(self.data_size)
+            compute_size = random.choice(self.comp_size)
+            max_t = random.choice(self.tau)
             self.tasks.append([data_size, compute_size, max_t])
 
     def produce_action(self, action_type, price_level):
