@@ -14,37 +14,6 @@ import numpy as np
 config = Config()
 config.seed = 1
     
-num_vehicles = 20
-task_num = 30
-# embedding_dimensions = [[num_possible_states, 20]]
-# print("Num possible states ", num_possible_states)
-embedding_dimensions = [[num_vehicles*3+3, 50]]
-config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
-
-num_episode = 1000
-trials = 100
-action_type = ["random", "greedy"]
-env = config.environment
-for i in action_type:
-    print(i)
-    plt.figure()
-    plt.title("VEC_{}".format(i))
-    for price_level in range(1,10):
-        results = []
-        rollings = []
-        for _ in range(num_episode):
-            env.reset()
-            reward = 0
-            for _ in range(task_num):
-                _,r,_,_=env.step(env.produce_action(i, price_level))
-                reward+=r
-            results.append(reward)
-            rollings.append(np.mean(results[-trials:]))
-        plt.plot(rollings[50:],label=str(price_level))
-        print("price=", price_level, "mean_reward=", np.mean(results))
-    plt.legend()
-    plt.savefig("results/data_and_graphs/VEC_{}.png".format(i))
-
 config.num_episodes_to_run = 3000
 config.file_to_save_data_results = "results/data_and_graphs/VEC.pkl"
 config.file_to_save_results_graph = "results/data_and_graphs/VEC.png"
@@ -61,7 +30,7 @@ config.device = "cuda:0"
 
 config.hyperparameters = {
     "DQN_Agents": {
-        "learning_rate": 0.00005,
+        "learning_rate": 0.0001,
         "batch_size": 256,
         "buffer_size": 100000,
         "epsilon_decay_rate_denominator": 150,
@@ -116,6 +85,30 @@ config.hyperparameters = {
     }
 }
 
-AGENTS = [Dueling_DDQN] #DIAYN] # A3C] #SNN_HRL] #, DDQN]
-trainer = Trainer(config, AGENTS)
-trainer.run_games_for_agents()
+num_episode = 3000
+trials = 100
+action_type = ["random", "greedy"]
+task_num = 30
+
+for num_vehicles in range(5,51,5):
+    config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
+    for i in action_type:
+        print(i)
+        with open("../finish_count.txt",'a') as f:
+            f.write(i+'\n')
+        results = []
+        rollings = []
+        for _ in range(config.num_episodes_to_run):
+            config.environment.reset()
+            reward = 0
+            for _ in range(task_num):
+                _,r,_,_=config.environment.step(config.environment.produce_action(i))
+                reward+=r
+            results.append(reward)
+            rollings.append(np.mean(results[-trials:]))
+        print("mean_reward=", np.mean(results),"max_reward=",max(results))
+    with open("../finish_count.txt",'a') as f:
+        f.write('DDQN\n')
+    AGENTS = [DDQN] 
+    trainer = Trainer(config, AGENTS)
+    trainer.run_games_for_agents()

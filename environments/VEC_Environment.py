@@ -2,6 +2,7 @@ import copy
 import random
 from collections import namedtuple
 import gym
+import torch
 from gym import wrappers
 import numpy as np
 import matplotlib as mpl
@@ -35,6 +36,7 @@ class VEC_Environment(gym.Env):
         self.price = 0.1
         self.max_price = np.log(1+self.max_tau)/20
         self.price_level = 10
+        self.sample_price = torch.distributions.Categorical(torch.tensor([float(i) for i in range(self.price_level)]))
 
         self.action_space = spaces.Discrete(self.num_vehicles*self.price_level)
         self.observation_space = spaces.Dict({
@@ -49,7 +51,8 @@ class VEC_Environment(gym.Env):
         self.max_episode_steps = 100
         self._max_episode_steps = 100
         self.id = "VEC"
-        
+        self.finish_count = 0
+        self.utility = 0
         self.vehicles = [] #vehicles in the range
         self.tasks = [] #tasks for offloading
         self.init_vehicles()
@@ -76,6 +79,11 @@ class VEC_Environment(gym.Env):
             v["freq_remain"] = max(0, v["freq_init"] - sum([i[1]/i[2] for i in v["tasks"]]))
             alpha_max = v["freq_remain"]/v["freq"]
             v["u_max"] = sum([np.log(1+alpha_max*i[2]) for i in v["tasks"]])
+            v["position"] = v["position_init"]
+        with open("../finish_count.txt",'a') as f:
+            f.write(str(self.finish_count)+' '+str(self.utility)+'\n')
+        self.finish_count = 0
+        self.utility = 0
         task = self.tasks[0]
         self.s = {
             "snr":np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles]),
@@ -89,9 +97,13 @@ class VEC_Environment(gym.Env):
         self.step_count += 1
         # print("action=",action)
         self.reward = self.compute_reward(action)
+        self.utility += self.reward
         v_id = action//self.price_level
         self.s["freq_remain"][v_id] = self.vehicles[v_id]["freq_remain"]
         self.s["u_max"][v_id] = self.vehicles[v_id]["u_max"]
+        self.move_vehicles()
+        self.s["snr"] = np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles])
+        self.s["time_remain"] = np.array([min(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 100) for v in self.vehicles])
         if self.step_count >= self.task_num_per_episode: 
             self.done = True
         else: 
@@ -105,14 +117,16 @@ class VEC_Environment(gym.Env):
         interface to fit with the open AI gym specifications"""
         task = self.s["task"]
         v_id = action//self.price_level
-        cost = (1 + action%self.price_level)*self.price*task[1]
+        u_max = self.s["u_max"][v_id]
+        u_alpha = (action%self.price_level)/self.price_level*u_max
+        cost = u_max - u_alpha + self.price*task[1]
+        # cost = (1 + action%self.price_level)*self.price*task[1]
         reward = -np.log(1+self.max_tau)
         v = self.vehicles[v_id]
         if v["freq_remain"]==0:
             return reward
         alpha_max = v["freq_remain"]/v["freq"]
-        u_max = sum([np.log(1+alpha_max*i[2]) for i in v["tasks"]])
-        alpha = fsolve(lambda a:sum([np.log(1+a*i[2]) for i in v["tasks"]])-u_max+ cost -self.price*task[1], 0.001)[0]
+        alpha = fsolve(lambda a:sum([np.log(1+a*i[2]) for i in v["tasks"]])-u_alpha, 0.001)[0]
         alpha = min(max(0,alpha), alpha_max)
         freq_alloc = v["freq"]-(v["freq"]-v["freq_remain"])/(1-alpha)
         if freq_alloc <= 0:
@@ -125,6 +139,7 @@ class VEC_Environment(gym.Env):
             v["freq_remain"] = max(0, v["freq"] - sum([i[1]/i[2] for i in v["tasks"]]))
             alpha_max = v["freq_remain"]/v["freq"]
             v["u_max"] = sum([np.log(1+alpha_max*i[2]) for i in v["tasks"]])
+            self.finish_count += 1
             # if reward <= 0:
             #     print("t_total=",t_total,"reward=",reward)
         return reward
@@ -133,10 +148,10 @@ class VEC_Environment(gym.Env):
         for _ in range(self.num_vehicles):
             self.vehicle_count += 1
             v_f = random.choice(self.vehicle_F)
-            v_p = random.uniform(-self.maxR,self.maxR)
+            v_p = random.uniform(-self.maxR*0.8,self.maxR*0.8)
             v_v = random.uniform(-self.maxV,self.maxV)
             v_v = v_v if v_v!=0 else random.choice([-0.1, 0.1])
-            self.vehicles.append({"id":self.vehicle_count, "position":v_p, "velocity":v_v, "freq_init":v_f, "freq":v_f, "freq_remain":0, "tasks":[], "u_max":0})
+            self.vehicles.append({"id":self.vehicle_count, "position":v_p, "position_init":v_p, "velocity":v_v, "freq_init":v_f, "freq":v_f, "freq_remain":0, "tasks":[], "u_max":0})
 
     def add_vehicle(self):
         if len(self.vehicles) <= self.num_vehicles:
@@ -148,11 +163,11 @@ class VEC_Environment(gym.Env):
             self.vehicles.append({"id":self.vehicle_count, "position":v_p, "velocity":v_v, "freq_init":v_f, "freq":v_f, "freq_remain":0, "tasks":[], "u_max":0})
 
     def move_vehicles(self):
-        for i in range(len(self.vehicles)-1,-1,-1):
-            self.vehicles[i]["position"] += self.vehicles[i]["velocity"]*self.max_tau
-            if abs(self.vehicles[i]["position"]) >= self.maxR:
-                self.vehicles.pop(i)
-                self.add_vehicle()
+        for i in range(len(self.vehicles)):
+            self.vehicles[i]["position"] += self.vehicles[i]["velocity"]*0.05
+            # if abs(self.vehicles[i]["position"]) >= self.maxR:
+            #     self.vehicles.pop(i)
+            #     self.add_vehicle()
 
     def generate_local_tasks(self):
         for v in self.vehicles:
@@ -171,9 +186,9 @@ class VEC_Environment(gym.Env):
             max_t = random.choice(self.tau)
             self.tasks.append([data_size, compute_size, max_t])
 
-    def produce_action(self, action_type, price_level):
+    def produce_action(self, action_type):
         if action_type=="random":
-            return self.action_space.sample()//self.price_level*self.price_level + price_level
+            return self.action_space.sample()//self.price_level*self.price_level + int(self.sample_price.sample())
         elif action_type=="greedy":
-            return np.argmax(self.s["freq_remain"])*self.price_level + price_level
+            return np.argmax(self.s["freq_remain"])*self.price_level + int(self.sample_price.sample())
         
