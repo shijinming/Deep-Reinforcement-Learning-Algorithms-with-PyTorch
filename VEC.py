@@ -16,7 +16,7 @@ config.seed = 1
     
 config.num_episodes_to_run = 3000
 config.file_to_save_data_results = "results/data_and_graphs/VEC.pkl"
-config.file_to_save_results_graph = "results/data_and_graphs/VEC.png"
+config.file_to_save_results_graph = False #"results/data_and_graphs/VEC.png"
 config.show_solution_score = False
 config.visualise_individual_results = False
 config.visualise_overall_agent_results = True
@@ -87,11 +87,13 @@ config.hyperparameters = {
 
 num_episode = 3000
 trials = 100
-action_type = ["random", "greedy"]
+action_type = ["random_random", "greedy_random", "random_max","greedy_max"]
 task_num = 30
 
 for num_vehicles in range(5,51,5):
     config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
+    with open("../tasks.txt",'a') as f:
+        f.write("tasks:\n"+config.environment.get_offload_tasks()+'\n')
     for i in action_type:
         print(i)
         with open("../finish_count.txt",'a') as f:

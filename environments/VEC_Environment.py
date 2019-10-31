@@ -36,7 +36,7 @@ class VEC_Environment(gym.Env):
         self.price = 0.1
         self.max_price = np.log(1+self.max_tau)/20
         self.price_level = 10
-        self.sample_price = torch.distributions.Categorical(torch.tensor([float(i) for i in range(self.price_level)]))
+        self.sample_price = torch.distributions.Categorical(torch.tensor([float(i) for i in range(1, self.price_level+1)]))
 
         self.action_space = spaces.Discrete(self.num_vehicles*self.price_level)
         self.observation_space = spaces.Dict({
@@ -118,7 +118,7 @@ class VEC_Environment(gym.Env):
         task = self.s["task"]
         v_id = action//self.price_level
         u_max = self.s["u_max"][v_id]
-        u_alpha = (action%self.price_level)/self.price_level*u_max
+        u_alpha = u_max - (action%self.price_level+1)/self.price_level*u_max
         cost = u_max - u_alpha + self.price*task[1]
         # cost = (1 + action%self.price_level)*self.price*task[1]
         reward = -np.log(1+self.max_tau)
@@ -148,7 +148,7 @@ class VEC_Environment(gym.Env):
         for _ in range(self.num_vehicles):
             self.vehicle_count += 1
             v_f = random.choice(self.vehicle_F)
-            v_p = random.uniform(-self.maxR*0.8,self.maxR*0.8)
+            v_p = random.uniform(-self.maxR*0.9,self.maxR*0.9)
             v_v = random.uniform(-self.maxV,self.maxV)
             v_v = v_v if v_v!=0 else random.choice([-0.1, 0.1])
             self.vehicles.append({"id":self.vehicle_count, "position":v_p, "position_init":v_p, "velocity":v_v, "freq_init":v_f, "freq":v_f, "freq_remain":0, "tasks":[], "u_max":0})
@@ -164,7 +164,7 @@ class VEC_Environment(gym.Env):
 
     def move_vehicles(self):
         for i in range(len(self.vehicles)):
-            self.vehicles[i]["position"] += self.vehicles[i]["velocity"]*0.05
+            self.vehicles[i]["position"] += self.vehicles[i]["velocity"]/3.6*0.1
             # if abs(self.vehicles[i]["position"]) >= self.maxR:
             #     self.vehicles.pop(i)
             #     self.add_vehicle()
@@ -187,8 +187,17 @@ class VEC_Environment(gym.Env):
             self.tasks.append([data_size, compute_size, max_t])
 
     def produce_action(self, action_type):
-        if action_type=="random":
+        if action_type=="random_random":
             return self.action_space.sample()//self.price_level*self.price_level + int(self.sample_price.sample())
-        elif action_type=="greedy":
+        elif action_type=="greedy_random":
             return np.argmax(self.s["freq_remain"])*self.price_level + int(self.sample_price.sample())
+        elif action_type=="random_max":
+            return self.action_space.sample()//self.price_level*self.price_level + 9
+        elif action_type=="greedy_max":
+            return np.argmax(self.s["freq_remain"])*self.price_level + 9
         
+    def get_offload_tasks(self):
+        result = []
+        for i in self.tasks:
+            result.append(" ".join([str(j) for j in i]))
+        return "\n".join(result)
