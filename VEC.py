@@ -14,12 +14,12 @@ import numpy as np
 config = Config()
 config.seed = 1
     
-config.num_episodes_to_run = 3000
+config.num_episodes_to_run = 5000
 config.file_to_save_data_results = "results/data_and_graphs/VEC.pkl"
 config.file_to_save_results_graph = False #"results/data_and_graphs/VEC.png"
 config.show_solution_score = False
 config.visualise_individual_results = False
-config.visualise_overall_agent_results = True
+config.visualise_overall_agent_results = False
 config.standard_deviation_results = 1.0
 config.runs_per_agent = 1
 config.use_GPU = True
@@ -30,14 +30,14 @@ config.device = "cuda:0"
 
 config.hyperparameters = {
     "DQN_Agents": {
-        "learning_rate": 0.0001,
+        "learning_rate": 0.00001,
         "batch_size": 256,
         "buffer_size": 100000,
         "epsilon_decay_rate_denominator": 150,
         "discount_rate": 0.99,
         "incremental_td_error": 1e-8,
         "update_every_n_steps": 1,
-        "linear_hidden_units": [128, 64, 64, 64],
+        "linear_hidden_units": [512, 256, 256, 128],
         "final_layer_activation": None,
         "batch_norm": False,
         "gradient_clipping_norm": 5,
@@ -49,7 +49,7 @@ config.hyperparameters = {
         "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
             "learning_rate": 0.00005,
-            "linear_hidden_units": [128, 64, 64, 64],
+            "linear_hidden_units": [256, 128, 128, 64],
             "final_layer_activation": "Softmax",
             "batch_norm": False,
             "tau": 0.005,
@@ -58,7 +58,7 @@ config.hyperparameters = {
 
         "Critic": {
             "learning_rate": 0.00002,
-            "linear_hidden_units": [64, 64, 64, 64],
+            "linear_hidden_units": [128, 128, 128, 64],
             "final_layer_activation": None,
             "batch_norm": False,
             "buffer_size": 100000,
@@ -89,28 +89,32 @@ num_episode = 3000
 trials = 100
 action_type = ["random_random", "greedy_random", "random_max","greedy_max"]
 task_num = 30
-
-for num_vehicles in range(5,51,5):
-    config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
-    with open("../tasks.txt",'a') as f:
-        f.write("tasks:\n"+config.environment.get_offload_tasks()+'\n')
-    for i in action_type:
-        print(i)
+task_file = "../tasks.txt"
+config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
+# config.environment.load_offloading_tasks(task_file, 5)
+config.environment.generate_offload_tasks(task_file, task_num, 10)
+for group in range(1,11):
+    print("group =",group)
+    for num_vehicles in range(50,0,-5):
+        config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
+        config.environment.load_offloading_tasks(task_file, group)
+        for i in action_type:
+            print(i)
+            with open("../finish_count.txt",'a') as f:
+                f.write(i+'\n')
+            results = []
+            rollings = []
+            for _ in range(config.num_episodes_to_run):
+                config.environment.reset()
+                reward = 0
+                for _ in range(task_num):
+                    _,r,_,_=config.environment.step(config.environment.produce_action(i))
+                    reward+=r
+                results.append(reward)
+                rollings.append(np.mean(results[-trials:]))
+            print("mean_reward=", np.mean(results),"max_reward=",max(results))
         with open("../finish_count.txt",'a') as f:
-            f.write(i+'\n')
-        results = []
-        rollings = []
-        for _ in range(config.num_episodes_to_run):
-            config.environment.reset()
-            reward = 0
-            for _ in range(task_num):
-                _,r,_,_=config.environment.step(config.environment.produce_action(i))
-                reward+=r
-            results.append(reward)
-            rollings.append(np.mean(results[-trials:]))
-        print("mean_reward=", np.mean(results),"max_reward=",max(results))
-    with open("../finish_count.txt",'a') as f:
-        f.write('DDQN\n')
-    AGENTS = [DDQN] 
-    trainer = Trainer(config, AGENTS)
-    trainer.run_games_for_agents()
+            f.write('DDQN\n')
+        AGENTS = [DDQN] 
+        trainer = Trainer(config, AGENTS)
+        trainer.run_games_for_agents()

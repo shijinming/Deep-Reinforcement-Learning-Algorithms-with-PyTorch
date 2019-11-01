@@ -15,13 +15,13 @@ from scipy.optimize import fsolve
 class VEC_Environment(gym.Env):
     environment_name = "Vehicular Edge Computing"
 
-    def __init__(self, num_vehicles=80, task_num=50):
+    def __init__(self, num_vehicles=50, task_num=30):
         self.num_vehicles = num_vehicles
         self.task_num_per_episode = task_num
         self.vehicle_count = 0
         self.maxR = 500 #m, max relative distance between request vehicle and other vehicles
         self.maxV = 30 #km/h, max relative velocity between requst vehicle and other vehicles
-        self.max_v = 80 # maximum vehicles in the communication range of request vehicle
+        self.max_v = 50 # maximum vehicles in the communication range of request vehicle
         self.max_local_task = 6
         self.bandwidth = 6 # MHz
         self.snr_ref = 1 # reference SNR, which is used to compute rate by B*log2(1+snr_ref*d^-a) 
@@ -40,10 +40,10 @@ class VEC_Environment(gym.Env):
 
         self.action_space = spaces.Discrete(self.num_vehicles*self.price_level)
         self.observation_space = spaces.Dict({
-            "snr":spaces.Box(0,self.snr_ref,shape=(self.num_vehicles,),dtype='float32'),
-            "time_remain":spaces.Box(0,100,shape=(self.num_vehicles,),dtype='float32'),
-            "freq_remain":spaces.Box(0,6,shape=(self.num_vehicles,),dtype='float32'),
-            "u_max":spaces.Box(0,self.max_local_task*self.max_tau,shape=(self.num_vehicles,),dtype='float32'),
+            "snr":spaces.Box(0,self.snr_ref,shape=(self.maxV,),dtype='float32'),
+            "time_remain":spaces.Box(0,100,shape=(self.maxV,),dtype='float32'),
+            "freq_remain":spaces.Box(0,6,shape=(self.maxV,),dtype='float32'),
+            "u_max":spaces.Box(0,self.max_local_task*self.max_tau,shape=(self.maxV,),dtype='float32'),
             "task":spaces.Box(0,max(self.max_datasize,self.max_compsize,self.max_tau),shape=(3,),dtype='float32')})
         self.seed()
         self.reward_threshold = 0.0
@@ -56,7 +56,7 @@ class VEC_Environment(gym.Env):
         self.vehicles = [] #vehicles in the range
         self.tasks = [] #tasks for offloading
         self.init_vehicles()
-        self.generate_offload_tasks()
+        # self.generate_offload_tasks()
         self.generate_local_tasks()
 
     def seed(self, seed=None):
@@ -86,10 +86,10 @@ class VEC_Environment(gym.Env):
         self.utility = 0
         task = self.tasks[0]
         self.s = {
-            "snr":np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles]),
-            "time_remain":np.array([min(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 100) for v in self.vehicles]),
-            "freq_remain":np.array([v["freq_remain"] for v in self.vehicles]),
-            "u_max":np.array([v["u_max"] for v in self.vehicles]),
+            "snr":np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles] + [0]*(self.maxV-self.num_vehicles)),
+            "time_remain":np.array([min(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 100) for v in self.vehicles] + [0]*(self.maxV-self.num_vehicles)),
+            "freq_remain":np.array([v["freq_remain"] for v in self.vehicles] + [0]*(self.maxV-self.num_vehicles)),
+            "u_max":np.array([v["u_max"] for v in self.vehicles] + [0]*(self.maxV-self.num_vehicles)),
             "task":np.array(task)}
         return spaces.flatten(self.observation_space, self.s)
 
@@ -102,8 +102,8 @@ class VEC_Environment(gym.Env):
         self.s["freq_remain"][v_id] = self.vehicles[v_id]["freq_remain"]
         self.s["u_max"][v_id] = self.vehicles[v_id]["u_max"]
         self.move_vehicles()
-        self.s["snr"] = np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles])
-        self.s["time_remain"] = np.array([min(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 100) for v in self.vehicles])
+        self.s["snr"] = np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles] + [0]*(self.maxV-self.num_vehicles))
+        self.s["time_remain"] = np.array([min(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 100) for v in self.vehicles] + [0]*(self.maxV-self.num_vehicles))
         if self.step_count >= self.task_num_per_episode: 
             self.done = True
         else: 
@@ -178,13 +178,17 @@ class VEC_Environment(gym.Env):
                 max_t = random.choice(self.tau)
                 v["tasks"].append([data_size, compute_size, max_t])
     
-    def generate_offload_tasks(self):
-        self.tasks = []
-        for _ in range(self.task_num_per_episode):
-            data_size = random.choice(self.data_size)
-            compute_size = random.choice(self.comp_size)
-            max_t = random.choice(self.tau)
-            self.tasks.append([data_size, compute_size, max_t])
+    def generate_offload_tasks(self, file, task_num, group_num):
+        with open(file,'w+') as f:
+            for _ in range(group_num):
+                f.write("tasks:\n")
+                for _ in range(task_num):
+                    data_size = random.choice(self.data_size)
+                    compute_size = random.choice(self.comp_size)
+                    max_t = random.choice(self.tau)
+                    task = [str(data_size), str(compute_size), str(max_t)]
+                    f.write(' '.join(task)+'\n')
+        
 
     def produce_action(self, action_type):
         if action_type=="random_random":
@@ -195,9 +199,12 @@ class VEC_Environment(gym.Env):
             return self.action_space.sample()//self.price_level*self.price_level + 9
         elif action_type=="greedy_max":
             return np.argmax(self.s["freq_remain"])*self.price_level + 9
-        
-    def get_offload_tasks(self):
-        result = []
-        for i in self.tasks:
-            result.append(" ".join([str(j) for j in i]))
-        return "\n".join(result)
+
+    def load_offloading_tasks(self, file, index):
+        a = []
+        self.tasks = []
+        with open(file) as f:
+            a = f.read().split("tasks:\n")[index].split('\n')
+        for i in a[:-1]:
+            tmp = i.split(' ')
+            self.tasks.append([float(k) for k in tmp])
