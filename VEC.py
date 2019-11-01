@@ -14,7 +14,7 @@ import numpy as np
 config = Config()
 config.seed = 1
     
-config.num_episodes_to_run = 5000
+config.num_episodes_to_run = 10
 config.file_to_save_data_results = "results/data_and_graphs/VEC.pkl"
 config.file_to_save_results_graph = False #"results/data_and_graphs/VEC.png"
 config.show_solution_score = False
@@ -85,14 +85,13 @@ config.hyperparameters = {
     }
 }
 
-num_episode = 3000
+num_episode = 10
 trials = 100
-action_type = ["random_random", "greedy_random", "random_max","greedy_max"]
+action_type = ["greedy","random"]
 task_num = 30
 task_file = "../tasks.txt"
-config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
-# config.environment.load_offloading_tasks(task_file, 5)
-config.environment.generate_offload_tasks(task_file, task_num, 10)
+# config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
+# config.environment.generate_offload_tasks(task_file, task_num, 10)
 for group in range(1,11):
     print("group =",group)
     for num_vehicles in range(50,0,-5):
@@ -104,7 +103,11 @@ for group in range(1,11):
                 f.write(i+'\n')
             results = []
             rollings = []
-            for _ in range(config.num_episodes_to_run):
+            if i=="greedy":
+                num_episode = 10
+            elif i=="random":
+                num_episode = 1000
+            for _ in range(num_episode):
                 config.environment.reset()
                 reward = 0
                 for _ in range(task_num):

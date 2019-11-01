@@ -22,14 +22,14 @@ class VEC_Environment(gym.Env):
         self.maxR = 500 #m, max relative distance between request vehicle and other vehicles
         self.maxV = 30 #km/h, max relative velocity between requst vehicle and other vehicles
         self.max_v = 50 # maximum vehicles in the communication range of request vehicle
-        self.max_local_task = 6
+        self.max_local_task = 10
         self.bandwidth = 6 # MHz
         self.snr_ref = 1 # reference SNR, which is used to compute rate by B*log2(1+snr_ref*d^-a) 
         self.snr_alpha = 2
         self.vehicle_F = range(5,16)  #GHz
         self.data_size = [0.05, 0.1, 0.15, 0.2] #MBytes
         self.comp_size = [0.2, 0.4, 0.6, 0.8, 1] #GHz
-        self.tau = [0.5, 1, 1.5, 2] #s
+        self.tau = [0.5, 1, 1.5, 2, 2.5] #s
         self.max_datasize = max(self.data_size)
         self.max_compsize = max(self.comp_size)
         self.max_tau = max(self.tau)
@@ -191,14 +191,33 @@ class VEC_Environment(gym.Env):
         
 
     def produce_action(self, action_type):
-        if action_type=="random_random":
-            return self.action_space.sample()//self.price_level*self.price_level + int(self.sample_price.sample())
-        elif action_type=="greedy_random":
-            return np.argmax(self.s["freq_remain"])*self.price_level + int(self.sample_price.sample())
-        elif action_type=="random_max":
-            return self.action_space.sample()//self.price_level*self.price_level + 9
-        elif action_type=="greedy_max":
-            return np.argmax(self.s["freq_remain"])*self.price_level + 9
+        if action_type=="random":
+            v_id = self.action_space.sample()//self.price_level
+        elif action_type=="greedy":
+            v_id = np.argmax(self.s["freq_remain"])
+        task = self.s["task"]
+        rewards = []
+        for price in range(self.price_level):
+            u_max = self.s["u_max"][v_id]
+            u_alpha = u_max - (price+1)/self.price_level*u_max
+            cost = u_max - u_alpha + self.price*task[1]
+            v = self.vehicles[v_id]
+            if v["freq_remain"]==0:
+                reward = -np.log(1+self.max_tau)
+            alpha_max = v["freq_remain"]/v["freq"]
+            alpha = fsolve(lambda a:sum([np.log(1+a*i[2]) for i in v["tasks"]])-u_alpha, 0.001)[0]
+            alpha = min(max(0,alpha), alpha_max)
+            freq_alloc = v["freq"]-(v["freq"]-v["freq_remain"])/(1-alpha)
+            if freq_alloc <= 0:
+                reward = -np.log(1+self.max_tau)
+            snr = self.s["snr"][v_id]
+            t_total = task[0]/(self.bandwidth*np.log2(1+snr)) + task[1]/freq_alloc
+            if t_total <= min(task[2],self.s["time_remain"][v_id]):
+                reward = np.log(1+task[2]-t_total) - cost
+            else:
+                reward = -np.log(1+self.max_tau)
+            rewards.append(reward)
+        return v_id*self.price_level+np.argmax(rewards)
 
     def load_offloading_tasks(self, file, index):
         a = []
