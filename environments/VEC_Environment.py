@@ -26,7 +26,7 @@ class VEC_Environment(gym.Env):
         self.bandwidth = 6 # MHz
         self.snr_ref = 1 # reference SNR, which is used to compute rate by B*log2(1+snr_ref*d^-a) 
         self.snr_alpha = 2
-        self.vehicle_F = range(5,16)  #GHz
+        self.vehicle_F = range(5,11)  #GHz
         self.data_size = [0.05, 0.1, 0.15, 0.2] #MBytes
         self.comp_size = [0.2, 0.4, 0.6, 0.8, 1] #GHz
         self.tau = [0.5, 1, 1.5, 2, 2.5] #s
@@ -51,7 +51,7 @@ class VEC_Environment(gym.Env):
         self.max_episode_steps = 100
         self._max_episode_steps = 100
         self.id = "VEC"
-        self.finish_count = 0
+        self.finish_count = [0,0,0,0]
         self.utility = 0
         self.vehicles = [] #vehicles in the range
         self.tasks = [] #tasks for offloading
@@ -81,8 +81,8 @@ class VEC_Environment(gym.Env):
             v["u_max"] = sum([np.log(1+alpha_max*i[2]) for i in v["tasks"]])
             v["position"] = v["position_init"]
         with open("../finish_count.txt",'a') as f:
-            f.write(str(self.finish_count)+' '+str(self.utility)+'\n')
-        self.finish_count = 0
+            f.write(str(self.utility)+' '+' '.join([str(i) for i in self.finish_count])+'\n')
+        self.finish_count = [0,0,0,0]
         self.utility = 0
         task = self.tasks[0]
         self.s = {
@@ -139,7 +139,7 @@ class VEC_Environment(gym.Env):
             v["freq_remain"] = max(0, v["freq"] - sum([i[1]/i[2] for i in v["tasks"]]))
             alpha_max = v["freq_remain"]/v["freq"]
             v["u_max"] = sum([np.log(1+alpha_max*i[2]) for i in v["tasks"]])
-            self.finish_count += 1
+            self.finish_count[int(task[2]/0.5)-1] += 1
             # if reward <= 0:
             #     print("t_total=",t_total,"reward=",reward)
         return reward
@@ -204,12 +204,16 @@ class VEC_Environment(gym.Env):
             v = self.vehicles[v_id]
             if v["freq_remain"]==0:
                 reward = -np.log(1+self.max_tau)
+                rewards.append(reward)
+                continue
             alpha_max = v["freq_remain"]/v["freq"]
             alpha = fsolve(lambda a:sum([np.log(1+a*i[2]) for i in v["tasks"]])-u_alpha, 0.001)[0]
             alpha = min(max(0,alpha), alpha_max)
             freq_alloc = v["freq"]-(v["freq"]-v["freq_remain"])/(1-alpha)
             if freq_alloc <= 0:
                 reward = -np.log(1+self.max_tau)
+                rewards.append(reward)
+                continue
             snr = self.s["snr"][v_id]
             t_total = task[0]/(self.bandwidth*np.log2(1+snr)) + task[1]/freq_alloc
             if t_total <= min(task[2],self.s["time_remain"][v_id]):
