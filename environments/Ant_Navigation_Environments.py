@@ -59,5 +59,3 @@ class Ant_Navigation_Environments(object):
             raise ValueError("Unknown environment name")
 
 
-
-

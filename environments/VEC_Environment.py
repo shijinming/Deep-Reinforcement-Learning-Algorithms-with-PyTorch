@@ -52,6 +52,7 @@ class VEC_Environment(gym.Env):
         self._max_episode_steps = 100
         self.id = "VEC"
         self.finish_count = [0,0,0,0]
+        self.finish_delay = [0,0,0,0]
         self.utility = 0
         self.vehicles = [] #vehicles in the range
         self.tasks = [] #tasks for offloading
@@ -81,8 +82,9 @@ class VEC_Environment(gym.Env):
             v["u_max"] = sum([np.log(1+alpha_max*i[2]) for i in v["tasks"]])
             v["position"] = v["position_init"]
         with open("../finish_count.txt",'a') as f:
-            f.write(str(self.utility)+' '+' '.join([str(i) for i in self.finish_count])+'\n')
+            f.write(str(self.utility)+' '+' '.join([str(i) for i in self.finish_count])+' '+' '.join([str(i) for i in self.finish_delay])+'\n')
         self.finish_count = [0,0,0,0]
+        self.finish_delay = [0,0,0,0]
         self.utility = 0
         task = self.tasks[0]
         self.s = {
@@ -140,6 +142,7 @@ class VEC_Environment(gym.Env):
             alpha_max = v["freq_remain"]/v["freq"]
             v["u_max"] = sum([np.log(1+alpha_max*i[2]) for i in v["tasks"]])
             self.finish_count[int(task[2]/0.5)-1] += 1
+            self.finish_delay[int(task[2]/0.5)-1] += t_total
             # if reward <= 0:
             #     print("t_total=",t_total,"reward=",reward)
         return reward

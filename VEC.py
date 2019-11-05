@@ -14,7 +14,7 @@ import numpy as np
 config = Config()
 config.seed = 1
     
-config.num_episodes_to_run = 5000
+config.num_episodes_to_run = 8000
 config.file_to_save_data_results = "results/data_and_graphs/VEC.pkl"
 config.file_to_save_results_graph = False #"results/data_and_graphs/VEC.png"
 config.show_solution_score = False
@@ -88,14 +88,14 @@ with open("../finish_count.txt",'w+') as f:
     f.write("")
 num_episode = 10
 trials = 100
-action_type = ["greedy","random"]
+action_type = ["greedy"]
 task_num = 30
 task_file = "../tasks.txt"
 # config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
 # config.environment.generate_offload_tasks(task_file, task_num, 10)
 for group in range(1,2):
     print("group =",group)
-    for num_vehicles in range(50,25,-5):
+    for num_vehicles in [10,20,30,10,20,30,10,20,30]:
         config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
         config.environment.load_offloading_tasks(task_file, group)
         for i in action_type:
