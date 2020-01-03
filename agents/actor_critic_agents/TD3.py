@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as functional
 from torch import optim
 from agents.Base_Agent import Base_Agent
-from DDPG import DDPG
+from .DDPG import DDPG
 from exploration_strategies.Gaussian_Exploration import Gaussian_Exploration
 
 class TD3(DDPG):
