@@ -1,6 +1,6 @@
 from agents.DQN_agents.DDQN import DDQN
 from agents.actor_critic_agents.DDPG import DDPG
-from agents.actor_critic_agents.SAC_Discrete import SAC_Discrete
+from agents.actor_critic_agents.SAC import SAC
 from agents.actor_critic_agents.A3C import A3C 
 from agents.DQN_agents.DDQN import DDQN
 from agents.DQN_agents.Dueling_DDQN import Dueling_DDQN
@@ -119,6 +119,6 @@ for group in range(1,2):
             print("mean_reward=", np.mean(results),"max_reward=",max(results))
         with open("../finish_count.txt",'a') as f:
             f.write('DDQN\n')
-        AGENTS = [DDQN] 
+        AGENTS = [SAC] 
         trainer = Trainer(config, AGENTS)
         trainer.run_games_for_agents()
