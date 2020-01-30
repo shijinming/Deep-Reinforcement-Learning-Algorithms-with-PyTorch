@@ -40,10 +40,10 @@ class VEC_Environment(gym.Env):
 
         self.action_space = spaces.Discrete(self.num_vehicles*self.price_level)
         self.observation_space = spaces.Dict({
-            "snr":spaces.Box(0,self.snr_ref,shape=(self.maxV,),dtype='float32'),
-            "time_remain":spaces.Box(0,100,shape=(self.maxV,),dtype='float32'),
-            "freq_remain":spaces.Box(0,6,shape=(self.maxV,),dtype='float32'),
-            "u_max":spaces.Box(0,self.max_local_task*self.max_tau,shape=(self.maxV,),dtype='float32'),
+            "snr":spaces.Box(0,self.snr_ref,shape=(self.max_v,),dtype='float32'),
+            "time_remain":spaces.Box(0,100,shape=(self.max_v,),dtype='float32'),
+            "freq_remain":spaces.Box(0,6,shape=(self.max_v,),dtype='float32'),
+            "u_max":spaces.Box(0,self.max_local_task*self.max_tau,shape=(self.max_v,),dtype='float32'),
             "task":spaces.Box(0,max(self.max_datasize,self.max_compsize,self.max_tau),shape=(3,),dtype='float32')})
         self.seed()
         self.reward_threshold = 0.0
@@ -88,10 +88,10 @@ class VEC_Environment(gym.Env):
         self.utility = 0
         task = self.tasks[0]
         self.s = {
-            "snr":np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles] + [0]*(self.maxV-self.num_vehicles)),
-            "time_remain":np.array([min(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 100) for v in self.vehicles] + [0]*(self.maxV-self.num_vehicles)),
-            "freq_remain":np.array([v["freq_remain"] for v in self.vehicles] + [0]*(self.maxV-self.num_vehicles)),
-            "u_max":np.array([v["u_max"] for v in self.vehicles] + [0]*(self.maxV-self.num_vehicles)),
+            "snr":np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
+            "time_remain":np.array([min(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 100) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
+            "freq_remain":np.array([v["freq_remain"] for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
+            "u_max":np.array([v["u_max"] for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
             "task":np.array(task)}
         return spaces.flatten(self.observation_space, self.s)
 
@@ -104,8 +104,8 @@ class VEC_Environment(gym.Env):
         self.s["freq_remain"][v_id] = self.vehicles[v_id]["freq_remain"]
         self.s["u_max"][v_id] = self.vehicles[v_id]["u_max"]
         self.move_vehicles()
-        self.s["snr"] = np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles] + [0]*(self.maxV-self.num_vehicles))
-        self.s["time_remain"] = np.array([min(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 100) for v in self.vehicles] + [0]*(self.maxV-self.num_vehicles))
+        self.s["snr"] = np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
+        self.s["time_remain"] = np.array([min(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 100) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
         if self.step_count >= self.task_num_per_episode: 
             self.done = True
         else: 
