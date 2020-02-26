@@ -33,18 +33,19 @@ class VEC_Environment(gym.Env):
         self.max_datasize = max(self.data_size)
         self.max_compsize = max(self.comp_size)
         self.max_tau = max(self.tau)
+        self.max_priority = 1
         self.price = 0.1
         self.max_price = np.log(1+self.max_tau)/20
         self.price_level = 10
         self.sample_price = torch.distributions.Categorical(torch.tensor([float(i) for i in range(1, self.price_level+1)]))
 
-        self.action_space = spaces.Discrete(self.num_vehicles*self.price_level)
+        self.action_space = spaces.Box(0, self.num_vehicles, shape=(1,), dtype='float32')
         self.observation_space = spaces.Dict({
             "snr":spaces.Box(0,self.snr_ref,shape=(self.max_v,),dtype='float32'),
             "time_remain":spaces.Box(0,100,shape=(self.max_v,),dtype='float32'),
             "freq_remain":spaces.Box(0,6,shape=(self.max_v,),dtype='float32'),
-            "u_max":spaces.Box(0,self.max_local_task*self.max_tau,shape=(self.max_v,),dtype='float32'),
-            "task":spaces.Box(0,max(self.max_datasize,self.max_compsize,self.max_tau),shape=(3,),dtype='float32')})
+            "serv_prob":spaces.Box(0,1,shape=(self.max_v,),dtype='float32'),
+            "task":spaces.Box(0,max(self.max_datasize,self.max_compsize,self.max_tau, self.max_priority),shape=(4,),dtype='float32')})
         self.seed()
         self.reward_threshold = 0.0
         self.trials = 100
@@ -79,7 +80,7 @@ class VEC_Environment(gym.Env):
             v["freq"] = v["freq_init"]
             v["freq_remain"] = max(0, v["freq_init"] - sum([i[1]/i[2] for i in v["tasks"]]))
             alpha_max = v["freq_remain"]/v["freq"]
-            v["u_max"] = sum([np.log(1+alpha_max*i[2]) for i in v["tasks"]])
+            v["serv_prob"] = 
             v["position"] = v["position_init"]
         with open("../finish_count.txt",'a') as f:
             f.write(str(self.utility)+' '+' '.join([str(i) for i in self.finish_count])+' '+' '.join([str(i) for i in self.finish_delay])+'\n')
@@ -118,7 +119,7 @@ class VEC_Environment(gym.Env):
         """Computes the reward we would have got with this achieved goal and desired goal. Must be of this exact
         interface to fit with the open AI gym specifications"""
         task = self.s["task"]
-        v_id = action//self.price_level
+        v_id = int(action)
         u_max = self.s["u_max"][v_id]
         u_alpha = u_max - (action%self.price_level+1)/self.price_level*u_max
         cost = u_max - u_alpha + self.price*task[1]
@@ -152,7 +153,7 @@ class VEC_Environment(gym.Env):
             self.vehicle_count += 1
             v_f = random.choice(self.vehicle_F)
             v_p = random.uniform(-self.maxR*0.9,self.maxR*0.9)
-            v_v = random.uniform(-self.maxV,self.maxV)
+            v_v = np.random.normal(0, self.maxV/2)
             v_v = v_v if v_v!=0 else random.choice([-0.1, 0.1])
             self.vehicles.append({"id":self.vehicle_count, "position":v_p, "position_init":v_p, "velocity":v_v, "freq_init":v_f, "freq":v_f, "freq_remain":0, "tasks":[], "u_max":0})
 
@@ -160,7 +161,7 @@ class VEC_Environment(gym.Env):
         if len(self.vehicles) <= self.num_vehicles:
             self.vehicle_count += 1
             v_f = np.random.choice(self.vehicle_F)
-            v_v = random.uniform(-self.maxV,self.maxV)
+            v_v = np.random.normal(0,self.maxV/2)
             v_v = v_v if v_v!=0 else random.choice([-0.1, 0.1])
             v_p = -self.maxR if v_v>0 else self.maxR
             self.vehicles.append({"id":self.vehicle_count, "position":v_p, "velocity":v_v, "freq_init":v_f, "freq":v_f, "freq_remain":0, "tasks":[], "u_max":0})
@@ -195,7 +196,7 @@ class VEC_Environment(gym.Env):
 
     def produce_action(self, action_type):
         if action_type=="random":
-            v_id = self.action_space.sample()//self.price_level
+            v_id = int(self.action_space.sample())
         elif action_type=="greedy":
             v_id = np.argmax(self.s["freq_remain"])
         task = self.s["task"]
