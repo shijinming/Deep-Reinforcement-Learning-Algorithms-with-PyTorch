@@ -33,7 +33,7 @@ class VEC_Environment(gym.Env):
         self.max_datasize = max(self.data_size)
         self.max_compsize = max(self.comp_size)
         self.max_tau = max(self.tau)
-        self.max_priority = 1
+        self.priority = [0.2, 1]
         self.price = 0.1
         self.max_price = np.log(1+self.max_tau)/20
         self.price_level = 10
@@ -92,7 +92,7 @@ class VEC_Environment(gym.Env):
             "snr":np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
             "time_remain":np.array([min(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 100) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
             "freq_remain":np.array([v["freq_remain"] for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
-            "u_max":np.array([v["u_max"] for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
+            "serv_prob":np.array([v["serv_prob"] for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
             "task":np.array(task)}
         return spaces.flatten(self.observation_space, self.s)
 
@@ -101,7 +101,7 @@ class VEC_Environment(gym.Env):
         # print("action=",action)
         self.reward = self.compute_reward(action)
         self.utility += self.reward
-        v_id = action//self.price_level
+        v_id = int(action)
         self.s["freq_remain"][v_id] = self.vehicles[v_id]["freq_remain"]
         self.s["u_max"][v_id] = self.vehicles[v_id]["u_max"]
         self.move_vehicles()
@@ -180,7 +180,8 @@ class VEC_Environment(gym.Env):
                 data_size = random.choice(self.data_size)
                 compute_size = random.choice(self.comp_size)
                 max_t = random.choice(self.tau)
-                v["tasks"].append([data_size, compute_size, max_t])
+                priority = random.choice(self.priority)
+                v["tasks"].append([data_size, compute_size, max_t, priority])
     
     def generate_offload_tasks(self, file, task_num, group_num):
         with open(file,'w+') as f:
@@ -190,7 +191,8 @@ class VEC_Environment(gym.Env):
                     data_size = random.choice(self.data_size)
                     compute_size = random.choice(self.comp_size)
                     max_t = random.choice(self.tau)
-                    task = [str(data_size), str(compute_size), str(max_t)]
+                    priority = random.choice(self.max_priority)
+                    task = [str(data_size), str(compute_size), str(max_t), str(priority)]
                     f.write(' '.join(task)+'\n')
         
 
