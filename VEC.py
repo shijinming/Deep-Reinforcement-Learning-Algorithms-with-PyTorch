@@ -16,7 +16,7 @@ config.seed = 1
     
 config.num_episodes_to_run = 8000
 config.file_to_save_data_results = "results/data_and_graphs/VEC.pkl"
-config.file_to_save_results_graph = False #"results/data_and_graphs/VEC.png"
+config.file_to_save_results_graph = "results/data_and_graphs/VEC.png"
 config.show_solution_score = False
 config.visualise_individual_results = False
 config.visualise_overall_agent_results = False
@@ -49,7 +49,7 @@ config.hyperparameters = {
         "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
             "learning_rate": 0.00005,
-            "linear_hidden_units": [256, 128, 128, 64],
+            "linear_hidden_units": [512, 256, 256, 128],
             "final_layer_activation": "Softmax",
             "batch_norm": False,
             "tau": 0.005,
@@ -58,7 +58,7 @@ config.hyperparameters = {
 
         "Critic": {
             "learning_rate": 0.00002,
-            "linear_hidden_units": [128, 128, 128, 64],
+            "linear_hidden_units": [512, 256, 256, 128],
             "final_layer_activation": None,
             "batch_norm": False,
             "buffer_size": 100000,
@@ -79,7 +79,7 @@ config.hyperparameters = {
         "automatically_tune_entropy_hyperparameter": True,
         "entropy_term_weight": None,
         "add_extra_noise": False,
-        "do_evaluation_iterations": False,
+        "do_evaluation_iterations": True,
         "clip_rewards":False 
 
     }
@@ -88,7 +88,7 @@ with open("../finish_count.txt",'w+') as f:
     f.write("")
 num_episode = 10
 trials = 100
-action_type = ["greedy"]
+# action_type = ["greedy"]
 task_num = 30
 task_file = "../tasks.txt"
 # config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
@@ -118,7 +118,11 @@ for group in range(1,2):
                 rollings.append(np.mean(results[-trials:]))
             print("mean_reward=", np.mean(results),"max_reward=",max(results))
         with open("../finish_count.txt",'a') as f:
+<<<<<<< HEAD
             f.write('DDQN\n')
+=======
+            f.write('SAC\n')
+>>>>>>> fc4ffbdf3e1ea6ef2744cba27558fa7e60dde3c3
         AGENTS = [SAC] 
         trainer = Trainer(config, AGENTS)
         trainer.run_games_for_agents()
