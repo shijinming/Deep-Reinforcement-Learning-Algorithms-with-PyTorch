@@ -88,14 +88,14 @@ with open("../finish_count.txt",'w+') as f:
     f.write("")
 num_episode = 10
 trials = 100
-# action_type = ["greedy"]
+action_type = ["random"]
 task_num = 30
 task_file = "../tasks.txt"
 # config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
 # config.environment.generate_offload_tasks(task_file, task_num, 10)
 for group in range(1,2):
     print("group =",group)
-    for num_vehicles in [10,20,30,10,20,30,10,20,30]:
+    for num_vehicles in [30]:
         config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
         config.environment.load_offloading_tasks(task_file, group)
         for i in action_type:
@@ -118,11 +118,7 @@ for group in range(1,2):
                 rollings.append(np.mean(results[-trials:]))
             print("mean_reward=", np.mean(results),"max_reward=",max(results))
         with open("../finish_count.txt",'a') as f:
-<<<<<<< HEAD
-            f.write('DDQN\n')
-=======
             f.write('SAC\n')
->>>>>>> fc4ffbdf3e1ea6ef2744cba27558fa7e60dde3c3
         AGENTS = [SAC] 
         trainer = Trainer(config, AGENTS)
         trainer.run_games_for_agents()

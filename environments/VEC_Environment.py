@@ -80,7 +80,7 @@ class VEC_Environment(gym.Env):
             v["freq"] = v["freq_init"]
             v["freq_remain"] = max(0, v["freq_init"] - sum([i[1]/i[2] for i in v["tasks"]]))
             alpha_max = v["freq_remain"]/v["freq"]
-            v["serv_prob"] = 
+            v["serv_prob"] = 0
             v["position"] = v["position_init"]
         with open("../finish_count.txt",'a') as f:
             f.write(str(self.utility)+' '+' '.join([str(i) for i in self.finish_count])+' '+' '.join([str(i) for i in self.finish_delay])+'\n')
@@ -237,3 +237,7 @@ class VEC_Environment(gym.Env):
         for i in a[:-1]:
             tmp = i.split(' ')
             self.tasks.append([float(k) for k in tmp])
+
+    def compute_service_availability(self):
+        for v in self.vehicles:
+            
