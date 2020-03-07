@@ -34,10 +34,10 @@ class VEC_Environment(gym.Env):
         self.max_compsize = max(self.comp_size)
         self.max_tau = max(self.tau)
         self.priority = [0.2, 1]
-        self.price = 0.1
-        self.max_price = np.log(1+self.max_tau)/20
-        self.price_level = 10
-        self.sample_price = torch.distributions.Categorical(torch.tensor([float(i) for i in range(1, self.price_level+1)]))
+        self.local_price = 1
+        self.service_threshold = 0.5
+        self.local_priority = 1
+        self.distance_factor = 1
 
         self.action_space = spaces.Box(0, self.num_vehicles, shape=(1,), dtype='float32')
         self.observation_space = spaces.Dict({
@@ -106,7 +106,7 @@ class VEC_Environment(gym.Env):
         self.s["u_max"][v_id] = self.vehicles[v_id]["u_max"]
         self.move_vehicles()
         self.s["snr"] = np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
-        self.s["time_remain"] = np.array([min(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 100) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
+        # self.s["time_remain"] = np.array([min(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 100) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
         if self.step_count >= self.task_num_per_episode: 
             self.done = True
         else: 
@@ -238,6 +238,5 @@ class VEC_Environment(gym.Env):
             tmp = i.split(' ')
             self.tasks.append([float(k) for k in tmp])
 
-    def compute_service_availability(self):
-        for v in self.vehicles:
-            
+    def compute_service_availability(self, priority, vehicle):
+        
