@@ -42,7 +42,6 @@ class VEC_Environment(gym.Env):
         self.action_space = spaces.Box(0, self.num_vehicles, shape=(1,), dtype='float32')
         self.observation_space = spaces.Dict({
             "snr":spaces.Box(0,self.snr_ref,shape=(self.max_v,),dtype='float32'),
-            "time_remain":spaces.Box(0,100,shape=(self.max_v,),dtype='float32'),
             "freq_remain":spaces.Box(0,6,shape=(self.max_v,),dtype='float32'),
             "serv_prob":spaces.Box(0,1,shape=(self.max_v,),dtype='float32'),
             "task":spaces.Box(0,max(self.max_datasize,self.max_compsize,self.max_tau, self.max_priority),shape=(4,),dtype='float32')})
@@ -80,7 +79,6 @@ class VEC_Environment(gym.Env):
             v["freq"] = v["freq_init"]
             v["freq_remain"] = max(0, v["freq_init"] - sum([i[1]/i[2] for i in v["tasks"]]))
             alpha_max = v["freq_remain"]/v["freq"]
-            v["serv_prob"] = 0
             v["position"] = v["position_init"]
         with open("../finish_count.txt",'a') as f:
             f.write(str(self.utility)+' '+' '.join([str(i) for i in self.finish_count])+' '+' '.join([str(i) for i in self.finish_delay])+'\n')
@@ -90,9 +88,8 @@ class VEC_Environment(gym.Env):
         task = self.tasks[0]
         self.s = {
             "snr":np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
-            "time_remain":np.array([min(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 100) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
             "freq_remain":np.array([v["freq_remain"] for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
-            "serv_prob":np.array([v["serv_prob"] for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
+            "serv_prob":np.array([self.compute_service_availability(task, v) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
             "task":np.array(task)}
         return spaces.flatten(self.observation_space, self.s)
 
@@ -103,15 +100,14 @@ class VEC_Environment(gym.Env):
         self.utility += self.reward
         v_id = int(action)
         self.s["freq_remain"][v_id] = self.vehicles[v_id]["freq_remain"]
-        self.s["u_max"][v_id] = self.vehicles[v_id]["u_max"]
         self.move_vehicles()
         self.s["snr"] = np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
-        # self.s["time_remain"] = np.array([min(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 100) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
+        task = self.tasks[self.step_count]
+        self.s["serv_prob"]= np.array([self.compute_service_availability(task, v) for v in self.vehicles])
         if self.step_count >= self.task_num_per_episode: 
             self.done = True
         else: 
             self.done = False
-            task = self.tasks[self.step_count]
             self.s["task"] = np.array(task)
         return spaces.flatten(self.observation_space, self.s), self.reward, self.done, {}
 
@@ -198,36 +194,16 @@ class VEC_Environment(gym.Env):
 
     def produce_action(self, action_type):
         if action_type=="random":
-            v_id = int(self.action_space.sample())
-        elif action_type=="greedy":
+            return self.action_space.sample()
+        if action_type=="greedy":
             v_id = np.argmax(self.s["freq_remain"])
         task = self.s["task"]
-        rewards = []
-        for price in range(self.price_level):
-            u_max = self.s["u_max"][v_id]
-            u_alpha = u_max - (price+1)/self.price_level*u_max
-            cost = u_max - u_alpha + self.price*task[1]
-            v = self.vehicles[v_id]
-            if v["freq_remain"]==0:
-                reward = -np.log(1+self.max_tau)
-                rewards.append(reward)
-                continue
-            alpha_max = v["freq_remain"]/v["freq"]
-            alpha = fsolve(lambda a:sum([np.log(1+a*i[2]) for i in v["tasks"]])-u_alpha, 0.001)[0]
-            alpha = min(max(0,alpha), alpha_max)
-            freq_alloc = v["freq"]-(v["freq"]-v["freq_remain"])/(1-alpha)
-            if freq_alloc <= 0:
-                reward = -np.log(1+self.max_tau)
-                rewards.append(reward)
-                continue
-            snr = self.s["snr"][v_id]
-            t_total = task[0]/(self.bandwidth*np.log2(1+snr)) + task[1]/freq_alloc
-            if t_total <= min(task[2],self.s["time_remain"][v_id]):
-                reward = np.log(1+task[2]-t_total) - cost
-            else:
-                reward = -np.log(1+self.max_tau)
-            rewards.append(reward)
-        return v_id*self.price_level+np.argmax(rewards)
+        price = 0
+        if task[3]==self.priority[0]:
+            price = 0
+        elif task[3]==self.priority[1]:
+            price = 0
+        return v_id + price
 
     def load_offloading_tasks(self, file, index):
         a = []
@@ -238,5 +214,11 @@ class VEC_Environment(gym.Env):
             tmp = i.split(' ')
             self.tasks.append([float(k) for k in tmp])
 
-    def compute_service_availability(self, priority, vehicle):
-        
+    def compute_service_availability(self, task, v):
+        T = max(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 0.00001)
+        p_t = max(0, 1-task[2]/T)
+        R = self.priority[0]**(1/self.distance_factor)*(task[3]*abs(v["position"])**(-self.distance_factor)/self.service_threshold
+        - self.local_priority*v["freq_remain"]/v["freq_init"])**(-1/self.distance_factor)
+        epsilon = np.exp(-2*R*self.num_vehicles)
+        service_availability = epsilon*p_t
+        return service_availability

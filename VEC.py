@@ -88,7 +88,7 @@ with open("../finish_count.txt",'w+') as f:
     f.write("")
 num_episode = 10
 trials = 100
-action_type = ["random"]
+action_type = []
 task_num = 30
 task_file = "../tasks.txt"
 # config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
