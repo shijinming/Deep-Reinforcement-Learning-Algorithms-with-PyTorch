@@ -116,23 +116,14 @@ class VEC_Environment(gym.Env):
         interface to fit with the open AI gym specifications"""
         task = self.s["task"]
         v_id = int(action)
-        u_max = self.s["u_max"][v_id]
-        u_alpha = u_max - (action%self.price_level+1)/self.price_level*u_max
-        cost = u_max - u_alpha + self.price*task[1]
-        # cost = (1 + action%self.price_level)*self.price*task[1]
         reward = -np.log(1+self.max_tau)
         v = self.vehicles[v_id]
-        if v["freq_remain"]==0:
-            return reward
-        alpha_max = v["freq_remain"]/v["freq"]
-        alpha = fsolve(lambda a:sum([np.log(1+a*i[2]) for i in v["tasks"]])-u_alpha, 0.001)[0]
-        alpha = min(max(0,alpha), alpha_max)
-        freq_alloc = v["freq"]-(v["freq"]-v["freq_remain"])/(1-alpha)
-        if freq_alloc <= 0:
-            return reward
+        fraction = action - int(action)
+        freq_alloc = fraction*v["freq_remain"]
         snr = self.s["snr"][v_id]
         t_total = task[0]/(self.bandwidth*np.log2(1+snr)) + task[1]/freq_alloc
-        if t_total <= min(task[2],self.s["time_remain"][v_id]):
+        time_remain = T = max(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 0.00001)
+        if t_total <= min(task[2],time_remain):
             reward = np.log(1+task[2]-t_total) - cost
             v["freq"] -= freq_alloc
             v["freq_remain"] = max(0, v["freq"] - sum([i[1]/i[2] for i in v["tasks"]]))
@@ -198,11 +189,17 @@ class VEC_Environment(gym.Env):
         if action_type=="greedy":
             v_id = np.argmax(self.s["freq_remain"])
         task = self.s["task"]
-        price = 0
+        snr = self.s["snr"][v_id]
+        T_tran = task[0]/(self.bandwidth*np.log2(1+snr))
+
         if task[3]==self.priority[0]:
-            price = 0
+            a = 0
+            b = 0
+            c = 0
         elif task[3]==self.priority[1]:
-            price = 0
+            a = 0
+            b = 0
+            c = 0
         return v_id + price
 
     def load_offloading_tasks(self, file, index):
