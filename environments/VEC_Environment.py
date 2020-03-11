@@ -38,6 +38,8 @@ class VEC_Environment(gym.Env):
         self.service_threshold = 0.5
         self.local_priority = 1
         self.distance_factor = 1
+        self.high_priority_factor = -np.log(1+self.max_tau)
+        self.low_priority_factor = np.log(1+min)
 
         self.action_space = spaces.Box(0, self.num_vehicles, shape=(1,), dtype='float32')
         self.observation_space = spaces.Dict({
@@ -120,19 +122,28 @@ class VEC_Environment(gym.Env):
         v = self.vehicles[v_id]
         fraction = action - int(action)
         freq_alloc = fraction*v["freq_remain"]
+        v["freq"] -= freq_alloc
+        v["freq_remain"] = max(0, v["freq"] - sum([i[1]/i[2] for i in v["tasks"]]))
         snr = self.s["snr"][v_id]
         t_total = task[0]/(self.bandwidth*np.log2(1+snr)) + task[1]/freq_alloc
-        time_remain = T = max(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 0.00001)
-        if t_total <= min(task[2],time_remain):
-            reward = np.log(1+task[2]-t_total) - cost
-            v["freq"] -= freq_alloc
-            v["freq_remain"] = max(0, v["freq"] - sum([i[1]/i[2] for i in v["tasks"]]))
-            alpha_max = v["freq_remain"]/v["freq"]
-            v["u_max"] = sum([np.log(1+alpha_max*i[2]) for i in v["tasks"]])
+        time_remain = max(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 0.00001)
+        cost = freq_alloc/v["freq_init"]*self.ref_price*task[1]
+        if task[3]==self.priority[0]:
+            if t_total <= time_remain:
+                if t_toal <= task[2]:
+                    reward = self.low_priority_factor -cost
+                else:
+                    reward = self.low_priority_factor*(t_total-task[2])**-2 - cost
             self.finish_count[int(task[2]/0.5)-1] += 1
             self.finish_delay[int(task[2]/0.5)-1] += t_total
-            # if reward <= 0:
-            #     print("t_total=",t_total,"reward=",reward)
+            else:
+                reward = 0 - cost
+        elif task[3]==self.priority[1]:
+            if t_toal <=min(task[2], time_remain):
+                reward = np.log(1+task[2]-t_total) - cost
+            else:
+                reward = self.high_priority_factor - cost
+
         return reward
 
     def init_vehicles(self):
