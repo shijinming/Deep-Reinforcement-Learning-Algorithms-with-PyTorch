@@ -97,7 +97,7 @@ class VEC_Environment(gym.Env):
 
     def step(self, action):
         self.step_count += 1
-        # print("action=",action)
+        print("action=",action)
         self.reward = self.compute_reward(action)
         self.utility += self.reward
         v_id = int(action)
