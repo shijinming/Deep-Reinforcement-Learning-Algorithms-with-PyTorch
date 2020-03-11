@@ -50,7 +50,7 @@ config.hyperparameters = {
         "Actor": {
             "learning_rate": 0.00005,
             "linear_hidden_units": [512, 256, 256, 128],
-            "final_layer_activation": "Softmax",
+            "final_layer_activation": None,
             "batch_norm": False,
             "tau": 0.005,
             "gradient_clipping_norm": 5
