@@ -39,14 +39,14 @@ class VEC_Environment(gym.Env):
         self.local_priority = 1
         self.distance_factor = 1
         self.high_priority_factor = -np.log(1+self.max_tau)
-        self.low_priority_factor = np.log(1+min)
+        self.low_priority_factor = np.log(1+min(self.tau))
 
         self.action_space = spaces.Box(0, self.num_vehicles, shape=(1,), dtype='float32')
         self.observation_space = spaces.Dict({
             "snr":spaces.Box(0,self.snr_ref,shape=(self.max_v,),dtype='float32'),
             "freq_remain":spaces.Box(0,6,shape=(self.max_v,),dtype='float32'),
             "serv_prob":spaces.Box(0,1,shape=(self.max_v,),dtype='float32'),
-            "task":spaces.Box(0,max(self.max_datasize,self.max_compsize,self.max_tau, self.max_priority),shape=(4,),dtype='float32')})
+            "task":spaces.Box(0,max(self.max_datasize,self.max_compsize,self.max_tau, max(self.priority)),shape=(4,),dtype='float32')})
         self.seed()
         self.reward_threshold = 0.0
         self.trials = 100
@@ -134,8 +134,8 @@ class VEC_Environment(gym.Env):
                     reward = self.low_priority_factor -cost
                 else:
                     reward = self.low_priority_factor*(t_total-task[2])**-2 - cost
-            self.finish_count[int(task[2]/0.5)-1] += 1
-            self.finish_delay[int(task[2]/0.5)-1] += t_total
+                self.finish_count[int(task[2]/0.5)-1] += 1
+                self.finish_delay[int(task[2]/0.5)-1] += t_total
             else:
                 reward = 0 - cost
         elif task[3]==self.priority[1]:
@@ -189,7 +189,7 @@ class VEC_Environment(gym.Env):
                     data_size = random.choice(self.data_size)
                     compute_size = random.choice(self.comp_size)
                     max_t = random.choice(self.tau)
-                    priority = random.choice(self.max_priority)
+                    priority = random.choice(self.priority)
                     task = [str(data_size), str(compute_size), str(max_t), str(priority)]
                     f.write(' '.join(task)+'\n')
         
