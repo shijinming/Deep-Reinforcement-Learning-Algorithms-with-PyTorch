@@ -34,7 +34,7 @@ class VEC_Environment(gym.Env):
         self.max_compsize = max(self.comp_size)
         self.max_tau = max(self.tau)
         self.priority = [0.2, 1]
-        self.local_price = 1
+        self.ref_price = 1
         self.service_threshold = 0.5
         self.local_priority = 1
         self.distance_factor = 1
@@ -117,6 +117,7 @@ class VEC_Environment(gym.Env):
         """Computes the reward we would have got with this achieved goal and desired goal. Must be of this exact
         interface to fit with the open AI gym specifications"""
         task = self.s["task"]
+        action = action[0]
         v_id = int(action)
         reward = -np.log(1+self.max_tau)
         v = self.vehicles[v_id]
@@ -130,7 +131,7 @@ class VEC_Environment(gym.Env):
         cost = freq_alloc/v["freq_init"]*self.ref_price*task[1]
         if task[3]==self.priority[0]:
             if t_total <= time_remain:
-                if t_toal <= task[2]:
+                if t_total <= task[2]:
                     reward = self.low_priority_factor -cost
                 else:
                     reward = self.low_priority_factor*(t_total-task[2])**-2 - cost
@@ -139,7 +140,7 @@ class VEC_Environment(gym.Env):
             else:
                 reward = 0 - cost
         elif task[3]==self.priority[1]:
-            if t_toal <=min(task[2], time_remain):
+            if t_total <=min(task[2], time_remain):
                 reward = np.log(1+task[2]-t_total) - cost
             else:
                 reward = self.high_priority_factor - cost
@@ -202,7 +203,7 @@ class VEC_Environment(gym.Env):
         task = self.s["task"]
         snr = self.s["snr"][v_id]
         T_tran = task[0]/(self.bandwidth*np.log2(1+snr))
-
+        price = 0
         if task[3]==self.priority[0]:
             a = 0
             b = 0
