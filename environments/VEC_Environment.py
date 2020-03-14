@@ -53,8 +53,8 @@ class VEC_Environment(gym.Env):
         self.max_episode_steps = 100
         self._max_episode_steps = 100
         self.id = "VEC"
-        self.finish_count = [0,0,0,0]
-        self.finish_delay = [0,0,0,0]
+        self.finish_count = [0,0,0,0,0]
+        self.finish_delay = [0,0,0,0,0]
         self.utility = 0
         self.vehicles = [] #vehicles in the range
         self.tasks = [] #tasks for offloading
@@ -84,8 +84,8 @@ class VEC_Environment(gym.Env):
             v["position"] = v["position_init"]
         with open("../finish_count.txt",'a') as f:
             f.write(str(self.utility)+' '+' '.join([str(i) for i in self.finish_count])+' '+' '.join([str(i) for i in self.finish_delay])+'\n')
-        self.finish_count = [0,0,0,0]
-        self.finish_delay = [0,0,0,0]
+        self.finish_count = [0,0,0,0,0]
+        self.finish_delay = [0,0,0,0,0]
         self.utility = 0
         task = self.tasks[0]
         self.s = {
@@ -106,7 +106,7 @@ class VEC_Environment(gym.Env):
         self.move_vehicles()
         self.s["snr"] = np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
         task = self.tasks[self.step_count]
-        self.s["serv_prob"]= np.array([self.compute_service_availability(task, v) for v in self.vehicles])
+        self.s["serv_prob"]= np.array([self.compute_service_availability(task, v) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
         if self.step_count >= self.task_num_per_episode: 
             self.done = True
         else: 
