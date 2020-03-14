@@ -102,15 +102,15 @@ class VEC_Environment(gym.Env):
         self.reward = self.compute_reward(action)
         self.utility += self.reward
         v_id = int(action)
-        self.s["freq_remain"][v_id] = self.vehicles[v_id]["freq_remain"]
         self.move_vehicles()
-        self.s["snr"] = np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
-        task = self.tasks[self.step_count]
-        self.s["serv_prob"]= np.array([self.compute_service_availability(task, v) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
         if self.step_count >= self.task_num_per_episode: 
             self.done = True
         else: 
             self.done = False
+            self.s["snr"] = np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
+            self.s["freq_remain"][v_id] = self.vehicles[v_id]["freq_remain"]
+            task = self.tasks[self.step_count]
+            self.s["serv_prob"]= np.array([self.compute_service_availability(task, v) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
             self.s["task"] = np.array(task)
         print("state=",self.s)
         return spaces.flatten(self.observation_space, self.s), self.reward, self.done, {}
