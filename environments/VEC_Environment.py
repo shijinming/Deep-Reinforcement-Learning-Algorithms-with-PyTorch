@@ -35,7 +35,7 @@ class VEC_Environment(gym.Env):
         self.max_tau = max(self.tau)
         self.priority = [0.2, 1]
         self.ref_price = 1
-        self.service_threshold = 0.5
+        self.service_threshold = 0.02/0.9
         self.local_priority = 1
         self.distance_factor = 1
         self.high_priority_factor = -np.log(1+self.max_tau)
@@ -93,6 +93,7 @@ class VEC_Environment(gym.Env):
             "freq_remain":np.array([v["freq_remain"] for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
             "serv_prob":np.array([self.compute_service_availability(task, v) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
             "task":np.array(task)}
+        print("init state=",self.s)
         return spaces.flatten(self.observation_space, self.s)
 
     def step(self, action):
@@ -111,6 +112,7 @@ class VEC_Environment(gym.Env):
         else: 
             self.done = False
             self.s["task"] = np.array(task)
+        print("state=",self.s)
         return spaces.flatten(self.observation_space, self.s), self.reward, self.done, {}
 
     def compute_reward(self, action):
@@ -226,8 +228,9 @@ class VEC_Environment(gym.Env):
     def compute_service_availability(self, task, v):
         T = max(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 0.00001)
         p_t = max(0, 1-task[2]/T)
-        R = self.priority[0]**(1/self.distance_factor)*(task[3]*abs(v["position"])**(-self.distance_factor)/self.service_threshold
-        - self.local_priority*v["freq_remain"]/v["freq_init"])**(-1/self.distance_factor)
-        epsilon = np.exp(-2*R*self.num_vehicles)
+        R = self.priority[0]**(1/self.distance_factor)*(task[3]*min(50, abs(v["position"]))**(-self.distance_factor)/self.service_threshold
+        - self.local_priority*(1-v["freq_remain"]/v["freq_init"]))**(-1/self.distance_factor)
+        R = min(R, 500)/1000
+        epsilon = np.exp(-2*R*self.num_vehicles*0.2)
         service_availability = epsilon*p_t
         return service_availability
