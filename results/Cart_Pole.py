@@ -138,7 +138,7 @@ config.hyperparameters = {
 if __name__ == "__main__":
     multiprocessing.set_start_method('spawn')
     # AGENTS = [SAC_Discrete, DDQN, Dueling_DDQN, DQN, DQN_With_Fixed_Q_Targets, DDQN_With_Prioritised_Experience_Replay, A2C, PPO]
-    AGENTS = [  A2C ]
+    AGENTS = [  SAC_Discrete ]
     trainer = Trainer(config, AGENTS)
     trainer.run_games_for_agents()
 
