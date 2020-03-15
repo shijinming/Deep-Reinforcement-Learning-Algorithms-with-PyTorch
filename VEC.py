@@ -49,7 +49,7 @@ config.hyperparameters = {
         "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
             "learning_rate": 0.00005,
-            "linear_hidden_units": [256, 128, 128, 64],
+            "linear_hidden_units": [512, 256, 256, 128],
             "final_layer_activation": "Softmax",
             "batch_norm": False,
             "tau": 0.005,
@@ -58,7 +58,7 @@ config.hyperparameters = {
 
         "Critic": {
             "learning_rate": 0.00002,
-            "linear_hidden_units": [128, 128, 128, 64],
+            "linear_hidden_units": [512, 256, 256, 128],
             "final_layer_activation": None,
             "batch_norm": False,
             "buffer_size": 100000,
@@ -79,7 +79,7 @@ config.hyperparameters = {
         "automatically_tune_entropy_hyperparameter": True,
         "entropy_term_weight": None,
         "add_extra_noise": False,
-        "do_evaluation_iterations": False,
+        "do_evaluation_iterations": True,
         "clip_rewards":False 
 
     }
@@ -91,11 +91,11 @@ trials = 100
 action_type = ["greedy"]
 task_num = 30
 task_file = "../tasks.txt"
-# config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
-# config.environment.generate_offload_tasks(task_file, task_num, 10)
+config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
+config.environment.generate_offload_tasks(task_file, task_num, 10)
 for group in range(1,2):
     print("group =",group)
-    for num_vehicles in [10,20,30,10,20,30,10,20,30]:
+    for num_vehicles in [30]:
         config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
         config.environment.load_offloading_tasks(task_file, group)
         for i in action_type:
@@ -119,6 +119,6 @@ for group in range(1,2):
             print("mean_reward=", np.mean(results),"max_reward=",max(results))
         with open("../finish_count.txt",'a') as f:
             f.write('DDQN\n')
-        AGENTS = [DDQN] 
+        AGENTS = [SAC_Discrete] 
         trainer = Trainer(config, AGENTS)
         trainer.run_games_for_agents()

@@ -29,7 +29,7 @@ class VEC_Environment(gym.Env):
         self.vehicle_F = range(5,11)  #GHz
         self.data_size = [0.05, 0.1, 0.15, 0.2] #MBytes
         self.comp_size = [0.2, 0.4, 0.6, 0.8, 1] #GHz
-        self.tau = [0.5, 1, 1.5, 2, 2.5] #s
+        self.tau = [0.5, 1, 1.5, 2] #s
         self.max_datasize = max(self.data_size)
         self.max_compsize = max(self.comp_size)
         self.max_tau = max(self.tau)
