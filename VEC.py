@@ -2,6 +2,7 @@ from agents.DQN_agents.DDQN import DDQN
 from agents.actor_critic_agents.DDPG import DDPG
 from agents.actor_critic_agents.SAC_Discrete import SAC_Discrete
 from agents.actor_critic_agents.A3C import A3C 
+from agents.actor_critic_agents.TD3 import TD3
 from agents.DQN_agents.DDQN import DDQN
 from agents.DQN_agents.Dueling_DDQN import Dueling_DDQN
 from environments.VEC_Environment import VEC_Environment
@@ -46,10 +47,10 @@ config.hyperparameters = {
         "clip_rewards": False,
         "tau":0.01
     },
-        "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
+    "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
             "learning_rate": 0.00005,
-            "linear_hidden_units": [512, 256, 256, 128],
+            "linear_hidden_units": [256,256,64,64],
             "final_layer_activation": "Softmax",
             "batch_norm": False,
             "tau": 0.005,
@@ -58,7 +59,7 @@ config.hyperparameters = {
 
         "Critic": {
             "learning_rate": 0.00002,
-            "linear_hidden_units": [512, 256, 256, 128],
+            "linear_hidden_units": [512,256,64,64],
             "final_layer_activation": None,
             "batch_norm": False,
             "buffer_size": 100000,
@@ -66,7 +67,7 @@ config.hyperparameters = {
             "gradient_clipping_norm": 5
         },
 
-        "min_steps_before_learning": 10000,
+        "min_steps_before_learning": 1000,
         "batch_size": 256,
         "discount_rate": 0.99,
         "mu": 0.0, #for O-H noise
@@ -79,7 +80,7 @@ config.hyperparameters = {
         "automatically_tune_entropy_hyperparameter": True,
         "entropy_term_weight": None,
         "add_extra_noise": False,
-        "do_evaluation_iterations": True,
+        "do_evaluation_iterations": False,
         "clip_rewards":False 
 
     }
@@ -88,7 +89,7 @@ with open("../finish_count.txt",'w+') as f:
     f.write("")
 num_episode = 10
 trials = 100
-action_type = ["greedy"]
+action_type = []
 task_num = 30
 task_file = "../tasks.txt"
 config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
@@ -119,6 +120,6 @@ for group in range(1,2):
             print("mean_reward=", np.mean(results),"max_reward=",max(results))
         with open("../finish_count.txt",'a') as f:
             f.write('DDQN\n')
-        AGENTS = [SAC_Discrete] 
+        AGENTS = [TD3] 
         trainer = Trainer(config, AGENTS)
         trainer.run_games_for_agents()
