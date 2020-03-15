@@ -119,7 +119,6 @@ class VEC_Environment(gym.Env):
         interface to fit with the open AI gym specifications"""
         task = self.s["task"]
         v_id = action//self.price_level
-        print(v_id)
         u_max = self.s["u_max"][v_id]
         u_alpha = u_max - (action%self.price_level+1)/self.price_level*u_max
         cost = u_max - u_alpha + self.price*task[1]

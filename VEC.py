@@ -49,8 +49,8 @@ config.hyperparameters = {
     },
     "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
-            "learning_rate": 0.00005,
-            "linear_hidden_units": [256,256,64,64],
+            "learning_rate": 0.00002,
+            "linear_hidden_units": [800,600,300, 200],
             "final_layer_activation": "Softmax",
             "batch_norm": False,
             "tau": 0.005,
@@ -58,8 +58,8 @@ config.hyperparameters = {
         },
 
         "Critic": {
-            "learning_rate": 0.00002,
-            "linear_hidden_units": [512,256,64,64],
+            "learning_rate": 0.0001,
+            "linear_hidden_units": [800,600,300, 200],
             "final_layer_activation": None,
             "batch_norm": False,
             "buffer_size": 100000,
@@ -68,7 +68,7 @@ config.hyperparameters = {
         },
 
         "min_steps_before_learning": 1000,
-        "batch_size": 256,
+        "batch_size": 128,
         "discount_rate": 0.99,
         "mu": 0.0, #for O-H noise
         "theta": 0.15, #for O-H noise
@@ -80,7 +80,7 @@ config.hyperparameters = {
         "automatically_tune_entropy_hyperparameter": True,
         "entropy_term_weight": None,
         "add_extra_noise": False,
-        "do_evaluation_iterations": False,
+        "do_evaluation_iterations": True,
         "clip_rewards":False 
 
     }
@@ -120,6 +120,6 @@ for group in range(1,2):
             print("mean_reward=", np.mean(results),"max_reward=",max(results))
         with open("../finish_count.txt",'a') as f:
             f.write('DDQN\n')
-        AGENTS = [TD3] 
+        AGENTS = [SAC_Discrete] 
         trainer = Trainer(config, AGENTS)
         trainer.run_games_for_agents()
