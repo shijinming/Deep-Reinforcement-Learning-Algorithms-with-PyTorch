@@ -15,7 +15,7 @@ import numpy as np
 config = Config()
 config.seed = 1
     
-config.num_episodes_to_run = 8000
+config.num_episodes_to_run = 2000
 config.file_to_save_data_results = "results/data_and_graphs/VEC.pkl"
 config.file_to_save_results_graph = False #"results/data_and_graphs/VEC.png"
 config.show_solution_score = False
@@ -49,8 +49,8 @@ config.hyperparameters = {
     },
     "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
-            "learning_rate": 0.00002,
-            "linear_hidden_units": [800,600,300, 200],
+            "learning_rate": 0.0002,
+            "linear_hidden_units": [500, 300],
             "final_layer_activation": "Softmax",
             "batch_norm": False,
             "tau": 0.005,
@@ -58,8 +58,8 @@ config.hyperparameters = {
         },
 
         "Critic": {
-            "learning_rate": 0.0001,
-            "linear_hidden_units": [800,600,300, 200],
+            "learning_rate": 0.001,
+            "linear_hidden_units": [500,300],
             "final_layer_activation": None,
             "batch_norm": False,
             "buffer_size": 100000,
