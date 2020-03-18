@@ -1,6 +1,7 @@
 from agents.DQN_agents.DDQN import DDQN
 from agents.actor_critic_agents.DDPG import DDPG
 from agents.actor_critic_agents.SAC import SAC
+from agents.actor_critic_agents.SAC_Discrete import SAC_Discrete
 from agents.actor_critic_agents.A3C import A3C 
 from agents.DQN_agents.DDQN import DDQN
 from agents.DQN_agents.Dueling_DDQN import Dueling_DDQN
@@ -50,7 +51,7 @@ config.hyperparameters = {
         "Actor": {
             "learning_rate": 0.00005,
             "linear_hidden_units": [512, 256],
-            "final_layer_activation": None,
+            "final_layer_activation": "Softmax",
             "batch_norm": False,
             "tau": 0.005,
             "gradient_clipping_norm": 5
@@ -88,7 +89,7 @@ with open("../finish_count.txt",'w+') as f:
     f.write("")
 num_episode = 10
 trials = 100
-action_type = []
+action_type = ["random"]
 task_num = 30
 task_file = "../tasks.txt"
 config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
@@ -119,6 +120,6 @@ for group in range(1,2):
             print("mean_reward=", np.mean(results),"max_reward=",max(results))
         with open("../finish_count.txt",'a') as f:
             f.write('SAC\n')
-        AGENTS = [SAC] 
+        AGENTS = [SAC_Discrete] 
         trainer = Trainer(config, AGENTS)
         trainer.run_games_for_agents()

@@ -33,15 +33,16 @@ class VEC_Environment(gym.Env):
         self.max_datasize = max(self.data_size)
         self.max_compsize = max(self.comp_size)
         self.max_tau = max(self.tau)
-        self.priority = [0.2, 1]
+        self.priority = [0.5, 1]
         self.ref_price = 1
-        self.service_threshold = 0.001
-        self.local_priority = 1
+        self.price_level = 100
+        self.service_threshold = 0.1
+        self.local_priority = 0.01
         self.distance_factor = 1
         self.high_priority_factor = -np.log(1+self.max_tau)
         self.low_priority_factor = np.log(1+min(self.tau))
 
-        self.action_space = spaces.Box(0, self.num_vehicles, shape=(1,), dtype='float32')
+        self.action_space = spaces.Discrete(self.num_vehicles*self.price_level)
         self.observation_space = spaces.Dict({
             "snr":spaces.Box(0,self.snr_ref,shape=(self.max_v,),dtype='float32'),
             "freq_remain":spaces.Box(0,6,shape=(self.max_v,),dtype='float32'),
@@ -80,7 +81,6 @@ class VEC_Environment(gym.Env):
         for v in self.vehicles:
             v["freq"] = v["freq_init"]
             v["freq_remain"] = max(0, v["freq_init"] - sum([i[1]/i[2] for i in v["tasks"]]))
-            alpha_max = v["freq_remain"]/v["freq"]
             v["position"] = v["position_init"]
         with open("../finish_count.txt",'a') as f:
             f.write(str(self.utility)+' '+' '.join([str(i) for i in self.finish_count])+' '+' '.join([str(i) for i in self.finish_delay])+'\n')
@@ -93,15 +93,13 @@ class VEC_Environment(gym.Env):
             "freq_remain":np.array([v["freq_remain"] for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
             "serv_prob":np.array([self.compute_service_availability(task, v) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
             "task":np.array(task)}
-        print("init state=",self.s)
         return spaces.flatten(self.observation_space, self.s)
 
     def step(self, action):
         self.step_count += 1
-        print("action=",action)
         self.reward = self.compute_reward(action)
         self.utility += self.reward
-        v_id = int(action)
+        v_id = action//self.price_level
         self.move_vehicles()
         if self.step_count >= self.task_num_per_episode: 
             self.done = True
@@ -112,18 +110,16 @@ class VEC_Environment(gym.Env):
             task = self.tasks[self.step_count]
             self.s["serv_prob"]= np.array([self.compute_service_availability(task, v) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
             self.s["task"] = np.array(task)
-        print("state=",self.s)
         return spaces.flatten(self.observation_space, self.s), self.reward, self.done, {}
 
     def compute_reward(self, action):
         """Computes the reward we would have got with this achieved goal and desired goal. Must be of this exact
         interface to fit with the open AI gym specifications"""
         task = self.s["task"]
-        action = action[0]
-        v_id = int(action)
+        v_id = action//self.price_level
         reward = -np.log(1+self.max_tau)
         v = self.vehicles[v_id]
-        fraction = action - int(action)
+        fraction = (action - action//self.price_level)/self.price_level
         freq_alloc = fraction*v["freq_remain"]
         v["freq"] -= freq_alloc
         v["freq_remain"] = max(0, v["freq"] - sum([i[1]/i[2] for i in v["tasks"]]))
@@ -228,10 +224,10 @@ class VEC_Environment(gym.Env):
     def compute_service_availability(self, task, v):
         T = max(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 0.00001)
         p_t = max(0, 1-task[2]/T)
-        R = self.priority[0]**(1/self.distance_factor)*(task[3]*min(50, abs(v["position"]))**(-self.distance_factor)/self.service_threshold
+        R = self.priority[0]**(1/self.distance_factor)*(task[3]*min(100, abs(v["position"]))**(-self.distance_factor)/self.service_threshold
         - self.local_priority*(1-v["freq_remain"]/v["freq_init"]))**(-1/self.distance_factor)
         R = min(R, 500)/1000
-        print(R,end=',')
-        epsilon = np.exp(-2*R*self.num_vehicles*0.2)
+        epsilon = np.exp(-2*R*self.num_vehicles*0.5)
         service_availability = epsilon*p_t
+        # print(service_availability,end=',')
         return service_availability
