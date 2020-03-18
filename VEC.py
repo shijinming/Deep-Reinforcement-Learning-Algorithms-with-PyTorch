@@ -49,8 +49,8 @@ config.hyperparameters = {
     },
     "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
-            "learning_rate": 0.0002,
-            "linear_hidden_units": [500, 300],
+            "learning_rate": 0.0001,
+            "linear_hidden_units": [500, 200],
             "final_layer_activation": "Softmax",
             "batch_norm": False,
             "tau": 0.005,
@@ -58,8 +58,8 @@ config.hyperparameters = {
         },
 
         "Critic": {
-            "learning_rate": 0.001,
-            "linear_hidden_units": [500,300],
+            "learning_rate": 0.0005,
+            "linear_hidden_units": [500,200],
             "final_layer_activation": None,
             "batch_norm": False,
             "buffer_size": 100000,
@@ -89,12 +89,12 @@ with open("../finish_count.txt",'w+') as f:
     f.write("")
 num_episode = 10
 trials = 100
-action_type = []
+action_type = ["greedy"]
 task_num = 30
 task_file = "../tasks.txt"
-config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
-config.environment.generate_offload_tasks(task_file, task_num, 10)
-for group in range(1,2):
+# config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
+# config.environment.generate_offload_tasks(task_file, task_num, 10)
+for group in range(2,3):
     print("group =",group)
     for num_vehicles in [30]:
         config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
