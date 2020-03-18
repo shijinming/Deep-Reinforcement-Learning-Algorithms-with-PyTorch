@@ -5,11 +5,10 @@ from agents.actor_critic_agents.SAC_Discrete import SAC_Discrete
 from agents.actor_critic_agents.A3C import A3C 
 from agents.DQN_agents.DDQN import DDQN
 from agents.DQN_agents.Dueling_DDQN import Dueling_DDQN
-from environments.VEC_Environment import VEC_Environment
+from environments.VEC_Environment1 import VEC_Environment1
 from agents.Trainer import Trainer
 from utilities.data_structures.Config import Config
 import matplotlib.pyplot as plt
-from environments.VEC_Environment import VEC_Environment
 import numpy as np
 
 config = Config()
@@ -51,7 +50,7 @@ config.hyperparameters = {
         "Actor": {
             "learning_rate": 0.00005,
             "linear_hidden_units": [512, 256],
-            "final_layer_activation": "Softmax",
+            "final_layer_activation": None,
             "batch_norm": False,
             "tau": 0.005,
             "gradient_clipping_norm": 5
@@ -92,12 +91,12 @@ trials = 100
 action_type = ["random"]
 task_num = 30
 task_file = "../tasks.txt"
-# config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
+# config.environment = VEC_Environment1(num_vehicles=50, task_num=task_num)
 # config.environment.generate_offload_tasks(task_file, task_num, 10)
 for group in range(1,2):
     print("group =",group)
     for num_vehicles in [30]:
-        config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
+        config.environment = VEC_Environment1(num_vehicles=num_vehicles, task_num=task_num)
         config.environment.load_offloading_tasks(task_file, group)
         for i in action_type:
             print(i)
@@ -120,6 +119,6 @@ for group in range(1,2):
             print("mean_reward=", np.mean(results),"max_reward=",max(results))
         with open("../finish_count.txt",'a') as f:
             f.write('SAC\n')
-        AGENTS = [DDQN] 
+        AGENTS = [SAC] 
         trainer = Trainer(config, AGENTS)
         trainer.run_games_for_agents()

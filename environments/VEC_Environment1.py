@@ -12,7 +12,7 @@ from matplotlib import pyplot
 from random import randint
 from scipy.optimize import fsolve
 
-class VEC_Environment(gym.Env):
+class VEC_Environment1(gym.Env):
     environment_name = "Vehicular Edge Computing"
 
     def __init__(self, num_vehicles=50, task_num=30):
@@ -42,7 +42,7 @@ class VEC_Environment(gym.Env):
         self.high_priority_factor = -np.log(1+self.max_tau)
         self.low_priority_factor = np.log(1+min(self.tau))
 
-        self.action_space = spaces.Discrete(self.num_vehicles*self.price_level)
+        self.action_space = spaces.Box(0, self.num_vehicles, shape=(1,),dtype='float32')
         self.observation_space = spaces.Dict({
             "snr":spaces.Box(0,self.snr_ref,shape=(self.max_v,),dtype='float32'),
             "freq_remain":spaces.Box(0,6,shape=(self.max_v,),dtype='float32'),
@@ -100,7 +100,8 @@ class VEC_Environment(gym.Env):
         self.step_count += 1
         self.reward = self.compute_reward(action)
         self.utility += self.reward
-        v_id = action//self.price_level
+        action=action[0]
+        v_id = int(action)
         self.move_vehicles()
         if self.step_count >= self.task_num_per_episode: 
             self.done = True
@@ -117,10 +118,13 @@ class VEC_Environment(gym.Env):
         """Computes the reward we would have got with this achieved goal and desired goal. Must be of this exact
         interface to fit with the open AI gym specifications"""
         task = self.s["task"]
-        v_id = action//self.price_level
+        action=action[0]
+        v_id = int(action)
+        if v_id==self.num_vehicles:
+            return 0
         reward = -np.log(1+self.max_tau)
         v = self.vehicles[v_id]
-        fraction = (action - action//self.price_level)/self.price_level
+        fraction = action - int(action)
         freq_alloc = fraction*v["freq_remain"]
         if freq_alloc<=0:
             return reward
