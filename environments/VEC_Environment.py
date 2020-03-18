@@ -118,9 +118,11 @@ class VEC_Environment(gym.Env):
         interface to fit with the open AI gym specifications"""
         task = self.s["task"]
         v_id = action//self.price_level
+        if v_id==self.num_vehicles:
+            return 0
         reward = -np.log(1+self.max_tau)
         v = self.vehicles[v_id]
-        fraction = (action - action//self.price_level)/self.price_level
+        fraction = (action%self.price_level)/self.price_level
         freq_alloc = fraction*v["freq_remain"]
         if freq_alloc<=0:
             return reward

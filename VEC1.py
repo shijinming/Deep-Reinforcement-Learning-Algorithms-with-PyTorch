@@ -49,7 +49,7 @@ config.hyperparameters = {
         "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
             "learning_rate": 0.00005,
-            "linear_hidden_units": [512, 256],
+            "linear_hidden_units": [512, 256, 256],
             "final_layer_activation": None,
             "batch_norm": False,
             "tau": 0.005,
@@ -58,7 +58,7 @@ config.hyperparameters = {
 
         "Critic": {
             "learning_rate": 0.0002,
-            "linear_hidden_units": [512, 256],
+            "linear_hidden_units": [512, 256, 256],
             "final_layer_activation": None,
             "batch_norm": False,
             "buffer_size": 100000,

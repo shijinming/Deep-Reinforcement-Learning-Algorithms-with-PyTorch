@@ -120,6 +120,6 @@ for group in range(1,2):
             print("mean_reward=", np.mean(results),"max_reward=",max(results))
         with open("../finish_count.txt",'a') as f:
             f.write('SAC\n')
-        AGENTS = [DDQN] 
+        AGENTS = [SAC_Discrete] 
         trainer = Trainer(config, AGENTS)
         trainer.run_games_for_agents()
