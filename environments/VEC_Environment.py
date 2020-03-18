@@ -35,7 +35,7 @@ class VEC_Environment(gym.Env):
         self.max_tau = max(self.tau)
         self.priority = [0.2, 1]
         self.ref_price = 1
-        self.service_threshold = 0.02/0.9
+        self.service_threshold = 0.001
         self.local_priority = 1
         self.distance_factor = 1
         self.high_priority_factor = -np.log(1+self.max_tau)
@@ -231,6 +231,7 @@ class VEC_Environment(gym.Env):
         R = self.priority[0]**(1/self.distance_factor)*(task[3]*min(50, abs(v["position"]))**(-self.distance_factor)/self.service_threshold
         - self.local_priority*(1-v["freq_remain"]/v["freq_init"]))**(-1/self.distance_factor)
         R = min(R, 500)/1000
+        print(R,end=',')
         epsilon = np.exp(-2*R*self.num_vehicles*0.2)
         service_availability = epsilon*p_t
         return service_availability
