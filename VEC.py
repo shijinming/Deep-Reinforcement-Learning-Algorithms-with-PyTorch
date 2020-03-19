@@ -31,14 +31,14 @@ config.device = "cuda:0"
 
 config.hyperparameters = {
     "DQN_Agents": {
-        "learning_rate": 0.00001,
+        "learning_rate": 0.00002,
         "batch_size": 256,
         "buffer_size": 100000,
         "epsilon_decay_rate_denominator": 150,
         "discount_rate": 0.99,
         "incremental_td_error": 1e-8,
         "update_every_n_steps": 1,
-        "linear_hidden_units": [128, 64],
+        "linear_hidden_units": [512, 256, 256, 128, 128],
         "final_layer_activation": None,
         "batch_norm": False,
         "gradient_clipping_norm": 5,
