@@ -31,14 +31,14 @@ config.device = "cuda:0"
 
 config.hyperparameters = {
     "DQN_Agents": {
-        "learning_rate": 0.00001,
+        "learning_rate": 0.0001,
         "batch_size": 256,
         "buffer_size": 100000,
         "epsilon_decay_rate_denominator": 150,
         "discount_rate": 0.99,
         "incremental_td_error": 1e-8,
         "update_every_n_steps": 1,
-        "linear_hidden_units": [128, 64],
+        "linear_hidden_units": [512, 256, 256],
         "final_layer_activation": None,
         "batch_norm": False,
         "gradient_clipping_norm": 5,
@@ -50,7 +50,7 @@ config.hyperparameters = {
     "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
             "learning_rate": 0.0001,
-            "linear_hidden_units": [500, 200],
+            "linear_hidden_units": [800, 500],
             "final_layer_activation": "Softmax",
             "batch_norm": False,
             "tau": 0.005,
@@ -59,7 +59,7 @@ config.hyperparameters = {
 
         "Critic": {
             "learning_rate": 0.0005,
-            "linear_hidden_units": [500,200],
+            "linear_hidden_units": [800,500],
             "final_layer_activation": None,
             "batch_norm": False,
             "buffer_size": 100000,
@@ -105,9 +105,9 @@ for group in range(1,2):
             results = []
             rollings = []
             if i=="greedy":
-                num_episode = 10
+                num_episode = 500
             elif i=="random":
-                num_episode = 200
+                num_episode = 100
             for _ in range(num_episode):
                 config.environment.reset()
                 reward = 0
@@ -119,6 +119,6 @@ for group in range(1,2):
             print("mean_reward=", np.mean(results),"max_reward=",max(results))
         with open("../finish_count.txt",'a') as f:
             f.write('SAC\n')
-        AGENTS = [DDQN] 
+        AGENTS = [SAC_Discrete] 
         trainer = Trainer(config, AGENTS)
         trainer.run_games_for_agents()
