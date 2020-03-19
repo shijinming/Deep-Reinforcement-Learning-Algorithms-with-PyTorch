@@ -15,7 +15,7 @@ import numpy as np
 config = Config()
 config.seed = 1
     
-config.num_episodes_to_run = 2000
+config.num_episodes_to_run = 5000
 config.file_to_save_data_results = "results/data_and_graphs/VEC.pkl"
 config.file_to_save_results_graph = False #"results/data_and_graphs/VEC.png"
 config.show_solution_score = False
@@ -89,7 +89,7 @@ with open("../finish_count.txt",'w+') as f:
     f.write("")
 num_episode = 10
 trials = 100
-action_type = ["greedy"]
+action_type = ["random","greedy"]
 task_num = 30
 task_file = "../tasks.txt"
 # config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
@@ -108,7 +108,7 @@ for group in range(2,3):
             if i=="greedy":
                 num_episode = 10
             elif i=="random":
-                num_episode = 1000
+                num_episode = 100
             for _ in range(num_episode):
                 config.environment.reset()
                 reward = 0
