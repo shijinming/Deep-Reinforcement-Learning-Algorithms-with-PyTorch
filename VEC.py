@@ -106,9 +106,9 @@ for group in range(1,2):
             results = []
             rollings = []
             if i=="greedy":
-                num_episode = 100
+                num_episode = 500
             elif i=="random":
-                num_episode = 100
+                num_episode = 500
             for _ in range(num_episode):
                 config.environment.reset()
                 reward = 0
@@ -120,6 +120,6 @@ for group in range(1,2):
             print("mean_reward=", np.mean(results),"max_reward=",max(results))
         with open("../finish_count.txt",'a') as f:
             f.write('SAC\n')
-        AGENTS = [DDQN] 
+        AGENTS = [SAC_Discrete] 
         trainer = Trainer(config, AGENTS)
         trainer.run_games_for_agents()
