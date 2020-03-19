@@ -88,7 +88,7 @@ with open("../finish_count.txt",'w+') as f:
     f.write("")
 num_episode = 10
 trials = 100
-action_type = ["random"]
+action_type = ["random","greedy"]
 task_num = 30
 task_file = "../tasks.txt"
 # config.environment = VEC_Environment1(num_vehicles=50, task_num=task_num)
@@ -105,7 +105,7 @@ for group in range(1,2):
             results = []
             rollings = []
             if i=="greedy":
-                num_episode = 10
+                num_episode = 1000
             elif i=="random":
                 num_episode = 1000
             for _ in range(num_episode):

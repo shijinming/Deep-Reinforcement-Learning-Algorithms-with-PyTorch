@@ -72,8 +72,8 @@ class VEC_Environment(gym.Env):
         # for _ in range(random.randint(1,10)):
         #     self.add_vehicle()
         self.move_vehicles()
-        self.add_vehicle()
-        # self.generate_local_tasks()
+        # self.add_vehicle()
+        self.generate_local_tasks()
         # self.generate_offload_tasks()
         self.step_count = 0
         self.next_state = None
@@ -117,38 +117,10 @@ class VEC_Environment(gym.Env):
         """Computes the reward we would have got with this achieved goal and desired goal. Must be of this exact
         interface to fit with the open AI gym specifications"""
         task = self.s["task"]
-        v_id = action//self.price_level
-        if v_id==self.num_vehicles:
-            return 0
-        reward = -np.log(1+self.max_tau)
+        reward, v_id, freq_alloc = self.compute_utility(action, task)
         v = self.vehicles[v_id]
-        fraction = (action%self.price_level)/self.price_level
-        freq_alloc = fraction*v["freq_remain"]
-        if freq_alloc<=0:
-            return reward
         v["freq"] -= freq_alloc
         v["freq_remain"] = max(0, v["freq"] - sum([i[1]/i[2] for i in v["tasks"]]))
-        snr = self.s["snr"][v_id]
-        t_total = task[0]/(self.bandwidth*np.log2(1+snr)) + task[1]/freq_alloc
-        time_remain = max(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 0.00001)
-        cost = freq_alloc/v["freq_init"]*self.ref_price*task[1]
-        if task[3]==self.priority[0]:
-            if t_total <= time_remain:
-                if t_total <= task[2]:
-                    reward = self.low_priority_factor -cost
-                else:
-                    reward = self.low_priority_factor*np.exp(-0.5*(t_total-task[2])) - cost
-                self.finish_count[int(task[2]/0.5)-1] += 1
-                self.finish_delay[int(task[2]/0.5)-1] += t_total
-            else:
-                reward = 0 - cost
-        elif task[3]==self.priority[1]:
-            if t_total <=min(task[2], time_remain):
-                reward = np.log(1+task[2]-t_total) - cost
-                self.finish_count[int(task[2]/0.5)-1] += 1
-                self.finish_delay[int(task[2]/0.5)-1] += t_total
-            else:
-                reward = self.high_priority_factor - cost
         return reward
 
     def init_vehicles(self):
@@ -205,18 +177,9 @@ class VEC_Environment(gym.Env):
         if action_type=="greedy":
             v_id = np.argmax(self.s["freq_remain"])
         task = self.s["task"]
-        snr = self.s["snr"][v_id]
-        T_tran = task[0]/(self.bandwidth*np.log2(1+snr))
-        price = 0
-        if task[3]==self.priority[0]:
-            a = 0
-            b = 0
-            c = 0
-        elif task[3]==self.priority[1]:
-            a = 0
-            b = 0
-            c = 0
-        return v_id + price
+        fraction = np.argmax([self.compute_utility(v_id*self.price_level+i, task)[0] for i in range(1,self.price_level)])
+        action = v_id*self.price_level + fraction + 1
+        return action
 
     def load_offloading_tasks(self, file, index):
         a = []
@@ -237,3 +200,36 @@ class VEC_Environment(gym.Env):
         service_availability = epsilon*p_t
         # print(service_availability,end=',')
         return service_availability
+
+    def compute_utility(self, action, task):
+        v_id = action//self.price_level
+        if v_id==self.num_vehicles:
+            return 0, v_id, 0
+        utility = -np.log(1+self.max_tau)
+        v = self.vehicles[v_id]
+        fraction = (action%self.price_level)/self.price_level
+        freq_alloc = fraction*v["freq_remain"]
+        if freq_alloc<=0:
+            return utility, v_id, 0
+        snr = self.s["snr"][v_id]
+        t_total = task[0]/(self.bandwidth*np.log2(1+snr)) + task[1]/freq_alloc
+        time_remain = max(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 0.00001)
+        cost = freq_alloc/v["freq_init"]*self.ref_price*task[1]
+        if task[3]==self.priority[0]:
+            if t_total <= time_remain:
+                if t_total <= task[2]:
+                    utility = self.low_priority_factor -cost
+                else:
+                    utility = self.low_priority_factor*np.exp(-0.5*(t_total-task[2])) - cost
+                self.finish_count[int(task[2]/0.5)-1] += 1
+                self.finish_delay[int(task[2]/0.5)-1] += t_total
+            else:
+                utility = 0 - cost
+        elif task[3]==self.priority[1]:
+            if t_total <=min(task[2], time_remain):
+                utility = np.log(1+task[2]-t_total) - cost
+                self.finish_count[int(task[2]/0.5)-1] += 1
+                self.finish_delay[int(task[2]/0.5)-1] += t_total
+            else:
+                utility = self.high_priority_factor - cost
+        return utility, v_id, freq_alloc

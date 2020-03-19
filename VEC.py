@@ -31,7 +31,7 @@ config.device = "cuda:0"
 
 config.hyperparameters = {
     "DQN_Agents": {
-        "learning_rate": 0.00002,
+        "learning_rate": 0.0002,
         "batch_size": 256,
         "buffer_size": 100000,
         "epsilon_decay_rate_denominator": 150,
@@ -49,7 +49,7 @@ config.hyperparameters = {
     },
         "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
-            "learning_rate": 0.00005,
+            "learning_rate": 0.0005,
             "linear_hidden_units": [512, 256],
             "final_layer_activation": "Softmax",
             "batch_norm": False,
@@ -58,7 +58,7 @@ config.hyperparameters = {
         },
 
         "Critic": {
-            "learning_rate": 0.0002,
+            "learning_rate": 0.002,
             "linear_hidden_units": [512, 256],
             "final_layer_activation": None,
             "batch_norm": False,
@@ -89,7 +89,7 @@ with open("../finish_count.txt",'w+') as f:
     f.write("")
 num_episode = 10
 trials = 100
-action_type = ["random"]
+action_type = ["random","greedy"]
 task_num = 30
 task_file = "../tasks.txt"
 # config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
@@ -106,9 +106,9 @@ for group in range(1,2):
             results = []
             rollings = []
             if i=="greedy":
-                num_episode = 10
+                num_episode = 100
             elif i=="random":
-                num_episode = 1000
+                num_episode = 100
             for _ in range(num_episode):
                 config.environment.reset()
                 reward = 0
@@ -120,6 +120,6 @@ for group in range(1,2):
             print("mean_reward=", np.mean(results),"max_reward=",max(results))
         with open("../finish_count.txt",'a') as f:
             f.write('SAC\n')
-        AGENTS = [SAC_Discrete] 
+        AGENTS = [DDQN] 
         trainer = Trainer(config, AGENTS)
         trainer.run_games_for_agents()
