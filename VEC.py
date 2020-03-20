@@ -9,7 +9,6 @@ from environments.VEC_Environment import VEC_Environment
 from agents.Trainer import Trainer
 from utilities.data_structures.Config import Config
 import matplotlib.pyplot as plt
-from environments.VEC_Environment import VEC_Environment
 import numpy as np
 
 config = Config()
@@ -38,7 +37,7 @@ config.hyperparameters = {
         "discount_rate": 0.99,
         "incremental_td_error": 1e-8,
         "update_every_n_steps": 1,
-        "linear_hidden_units": [512, 256, 256, 128],
+        "linear_hidden_units": [512, 512, 256, 256],
         "final_layer_activation": None,
         "batch_norm": False,
         "gradient_clipping_norm": 5,
@@ -50,7 +49,7 @@ config.hyperparameters = {
     "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
             "learning_rate": 0.0001,
-            "linear_hidden_units": [500, 200],
+            "linear_hidden_units": [1024, 256],
             "final_layer_activation": "Softmax",
             "batch_norm": False,
             "tau": 0.005,
@@ -59,7 +58,7 @@ config.hyperparameters = {
 
         "Critic": {
             "learning_rate": 0.0005,
-            "linear_hidden_units": [500,200],
+            "linear_hidden_units": [1024,256],
             "final_layer_activation": None,
             "batch_norm": False,
             "buffer_size": 100000,
@@ -91,8 +90,8 @@ trials = 100
 action_type = ["random","greedy"]
 task_num = 30
 task_file = "../tasks.txt"
-# config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
-# config.environment.generate_offload_tasks(task_file, task_num, 10)
+config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
+config.environment.generate_offload_tasks(task_file, task_num, 10)
 for group in range(1,2):
     print("group =",group)
     for num_vehicles in [30]:

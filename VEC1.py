@@ -48,8 +48,8 @@ config.hyperparameters = {
     },
         "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
-            "learning_rate": 0.00005,
-            "linear_hidden_units": [512, 256, 256],
+            "learning_rate": 0.0005,
+            "linear_hidden_units": [512, 512],
             "final_layer_activation": None,
             "batch_norm": False,
             "tau": 0.005,
@@ -57,8 +57,8 @@ config.hyperparameters = {
         },
 
         "Critic": {
-            "learning_rate": 0.0002,
-            "linear_hidden_units": [512, 256, 256],
+            "learning_rate": 0.002,
+            "linear_hidden_units": [512, 512],
             "final_layer_activation": None,
             "batch_norm": False,
             "buffer_size": 100000,
@@ -66,7 +66,7 @@ config.hyperparameters = {
             "gradient_clipping_norm": 5
         },
 
-        "min_steps_before_learning": 10000,
+        "min_steps_before_learning": 2000,
         "batch_size": 256,
         "discount_rate": 0.99,
         "mu": 0.0, #for O-H noise
@@ -81,7 +81,6 @@ config.hyperparameters = {
         "add_extra_noise": False,
         "do_evaluation_iterations": True,
         "clip_rewards":False 
-
     }
 }
 with open("../finish_count.txt",'w+') as f:
@@ -105,7 +104,7 @@ for group in range(1,2):
             results = []
             rollings = []
             if i=="greedy":
-                num_episode = 1000
+                num_episode = 5
             elif i=="random":
                 num_episode = 1000
             for _ in range(num_episode):

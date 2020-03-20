@@ -9,7 +9,6 @@ from environments.VEC_Environment import VEC_Environment
 from agents.Trainer import Trainer
 from utilities.data_structures.Config import Config
 import matplotlib.pyplot as plt
-from environments.VEC_Environment import VEC_Environment
 import numpy as np
 
 config = Config()
@@ -31,14 +30,14 @@ config.device = "cuda:0"
 
 config.hyperparameters = {
     "DQN_Agents": {
-        "learning_rate": 0.0001,
+        "learning_rate": 0.00002,
         "batch_size": 256,
         "buffer_size": 100000,
         "epsilon_decay_rate_denominator": 150,
         "discount_rate": 0.99,
         "incremental_td_error": 1e-8,
         "update_every_n_steps": 1,
-        "linear_hidden_units": [512, 256, 256],
+        "linear_hidden_units": [512, 256, 256, 128],
         "final_layer_activation": None,
         "batch_norm": False,
         "gradient_clipping_norm": 5,
@@ -49,8 +48,8 @@ config.hyperparameters = {
     },
     "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
-            "learning_rate": 0.0001,
-            "linear_hidden_units": [800, 500],
+            "learning_rate": 0.0005,
+            "linear_hidden_units": [1024, 256],
             "final_layer_activation": "Softmax",
             "batch_norm": False,
             "tau": 0.005,
@@ -58,8 +57,8 @@ config.hyperparameters = {
         },
 
         "Critic": {
-            "learning_rate": 0.0005,
-            "linear_hidden_units": [800,500],
+            "learning_rate": 0.001,
+            "linear_hidden_units": [1024,256],
             "final_layer_activation": None,
             "batch_norm": False,
             "buffer_size": 100000,
@@ -67,8 +66,8 @@ config.hyperparameters = {
             "gradient_clipping_norm": 5
         },
 
-        "min_steps_before_learning": 1000,
-        "batch_size": 128,
+        "min_steps_before_learning": 2000,
+        "batch_size": 256,
         "discount_rate": 0.99,
         "mu": 0.0, #for O-H noise
         "theta": 0.15, #for O-H noise
@@ -105,9 +104,9 @@ for group in range(1,2):
             results = []
             rollings = []
             if i=="greedy":
-                num_episode = 500
+                num_episode = 5
             elif i=="random":
-                num_episode = 100
+                num_episode = 1000
             for _ in range(num_episode):
                 config.environment.reset()
                 reward = 0
