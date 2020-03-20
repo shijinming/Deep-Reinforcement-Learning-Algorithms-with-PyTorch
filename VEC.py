@@ -38,7 +38,7 @@ config.hyperparameters = {
         "discount_rate": 0.99,
         "incremental_td_error": 1e-8,
         "update_every_n_steps": 1,
-        "linear_hidden_units": [512, 256, 256, 128, 128],
+        "linear_hidden_units": [512, 256, 256, 128],
         "final_layer_activation": None,
         "batch_norm": False,
         "gradient_clipping_norm": 5,

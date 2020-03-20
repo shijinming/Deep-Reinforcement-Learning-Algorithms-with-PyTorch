@@ -74,7 +74,7 @@ class VEC_Environment(gym.Env):
         #     self.add_vehicle()
         self.move_vehicles()
         # self.add_vehicle()
-        self.generate_local_tasks()
+        # self.generate_local_tasks()
         # self.generate_offload_tasks()
         self.step_count = 0
         self.next_state = None
@@ -169,7 +169,7 @@ class VEC_Environment(gym.Env):
                     data_size = random.choice(self.data_size)
                     compute_size = random.choice(self.comp_size)
                     max_t = random.choice(self.tau)
-                    priority = random.choice(self.priority)
+                    priority = random.choice(self.priority[1:])
                     task = [str(data_size), str(compute_size), str(max_t), str(priority)]
                     f.write(' '.join(task)+'\n')
         
