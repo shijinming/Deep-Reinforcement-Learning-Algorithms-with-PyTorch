@@ -36,7 +36,7 @@ class VEC_Environment(gym.Env):
         self.priority = [0.5, 1]
         self.ref_price = 0.1
         self.price = 0.1
-        self.price_level = 10
+        self.price_level = 20
         self.service_threshold = 0.1
         self.local_priority = 0.01
         self.distance_factor = 1

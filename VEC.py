@@ -5,7 +5,7 @@ from agents.actor_critic_agents.SAC_Discrete import SAC_Discrete
 from agents.actor_critic_agents.A3C import A3C 
 from agents.DQN_agents.DDQN import DDQN
 from agents.DQN_agents.Dueling_DDQN import Dueling_DDQN
-from environments.VEC_Environment2 import VEC_Environment
+from environments.VEC_Environment import VEC_Environment
 from agents.Trainer import Trainer
 from utilities.data_structures.Config import Config
 import matplotlib.pyplot as plt
@@ -90,8 +90,8 @@ trials = 100
 action_type = ["random","greedy"]
 task_num = 30
 task_file = "../tasks.txt"
-config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
-config.environment.generate_offload_tasks(task_file, task_num, 10)
+# config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
+# config.environment.generate_offload_tasks(task_file, task_num, 10)
 for group in range(1,2):
     print("group =",group)
     for num_vehicles in [30]:
@@ -118,6 +118,6 @@ for group in range(1,2):
             print("mean_reward=", np.mean(results),"max_reward=",max(results))
         with open("../finish_count.txt",'a') as f:
             f.write('SAC\n')
-        AGENTS = [SAC_Discrete] 
+        AGENTS = [DDQN] 
         trainer = Trainer(config, AGENTS)
         trainer.run_games_for_agents()

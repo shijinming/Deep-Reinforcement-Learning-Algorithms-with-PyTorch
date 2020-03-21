@@ -3,6 +3,7 @@ import random
 from collections import namedtuple
 import gym
 import torch
+from torch.distributions import Categorical
 from gym import wrappers
 import numpy as np
 import matplotlib as mpl
@@ -43,7 +44,7 @@ class VEC_Environment1(gym.Env):
         self.high_priority_factor = -np.log(1+self.max_tau)
         self.low_priority_factor = np.log(1+min(self.tau))
 
-        self.action_space = spaces.Box(0, self.num_vehicles, shape=(1,),dtype='float32')
+        self.action_space = spaces.Box(0, 1, shape=(2*self.num_vehicles,),dtype='float32')
         self.observation_space = spaces.Dict({
             "snr":spaces.Box(0,self.snr_ref,shape=(self.max_v,),dtype='float32'),
             # "time_remain":spaces.Box(0,100,shape=(self.max_v,),dtype='float32'),
@@ -107,16 +108,14 @@ class VEC_Environment1(gym.Env):
         self.step_count += 1
         self.reward = self.compute_reward(action)
         self.utility += self.reward
-        action=action[0]
-        v_id = int(action)
         self.move_vehicles()
         if self.step_count >= self.task_num_per_episode: 
             self.done = True
         else: 
             self.done = False
             self.s["snr"] = np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
-            self.s["freq_remain"][v_id] = self.vehicles[v_id]["freq_remain"]
-            self.s["u_max"][v_id] = self.vehicles[v_id]["u_max"]
+            self.s["freq_remain"] = np.array([v["freq_remain"] for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
+            self.s["u_max"] = np.array([v["u_max"] for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
             # self.s["time_remain"] = np.array([min(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 100) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
             task = self.tasks[self.step_count]
             self.s["serv_prob"]= np.array([self.compute_service_availability(task, v) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
@@ -181,7 +180,6 @@ class VEC_Environment1(gym.Env):
                     priority = random.choice(self.priority)
                     task = [str(data_size), str(compute_size), str(max_t), str(priority)]
                     f.write(' '.join(task)+'\n')
-        
 
     def produce_action(self, action_type):
         if action_type=="random":
@@ -189,8 +187,9 @@ class VEC_Environment1(gym.Env):
         if action_type=="greedy":
             v_id = np.argmax(self.s["freq_remain"])
         task = self.s["task"]
-        fraction = np.argmax([self.compute_utility([v_id+i/100], task)[0] for i in range(1,100)])
-        action = [v_id + (fraction+1)/100]
+        tmp = [0]*v_id+[1]+[0]*(self.num_vehicles-v_id-1)
+        fraction = np.argmax([self.compute_utility(tmp+[i/100]*self.num_vehicles, task)[0] for i in range(1,100)])
+        action = tmp+[(fraction+1)/100]*self.num_vehicles
         return action
 
     def load_offloading_tasks(self, file, index):
@@ -214,14 +213,16 @@ class VEC_Environment1(gym.Env):
         return service_availability
 
     def compute_utility(self, action, task):
-        action = action[0]
-        v_id = int(action)
+        action_distribution = (np.array(action[:self.num_vehicles])+1)/2
+        action_distribution = action_distribution/sum(action_distribution)
+        v_id = np.random.choice(list(range(self.num_vehicles)), p=action_distribution)
         if v_id==self.num_vehicles:
             return 0, v_id, 0
         utility = -np.log(1+self.max_tau)
         v = self.vehicles[v_id]
         u_max = self.s["u_max"][v_id]
-        u_alpha = u_max - (action-int(action))*u_max
+        price = action[self.num_vehicles+v_id]
+        u_alpha = u_max - max(0, min(price, 1))*u_max
         cost = u_max - u_alpha + self.price*task[1]
         alpha_max = v["freq_remain"]/v["freq"]
         alpha = fsolve(lambda a:sum([np.log(1+a*i[2]) for i in v["tasks"]])-u_alpha, 0.001)[0]

@@ -49,7 +49,7 @@ config.hyperparameters = {
     "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
             "learning_rate": 0.001,
-            "linear_hidden_units": [800, 200],
+            "linear_hidden_units": [1200, 800],
             "final_layer_activation": "Softmax",
             "batch_norm": False,
             "tau": 0.005,
@@ -90,8 +90,8 @@ trials = 100
 action_type = ["random","greedy"]
 task_num = 30
 task_file = "../tasks.txt"
-config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
-config.environment.generate_offload_tasks(task_file, task_num, 10)
+# config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
+# config.environment.generate_offload_tasks(task_file, task_num, 10)
 for group in range(1,2):
     print("group =",group)
     for num_vehicles in [30]:
