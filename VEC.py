@@ -5,7 +5,7 @@ from agents.actor_critic_agents.SAC_Discrete import SAC_Discrete
 from agents.actor_critic_agents.A3C import A3C 
 from agents.DQN_agents.DDQN import DDQN
 from agents.DQN_agents.Dueling_DDQN import Dueling_DDQN
-from environments.VEC_Environment import VEC_Environment
+from environments.VEC_Environment2 import VEC_Environment
 from agents.Trainer import Trainer
 from utilities.data_structures.Config import Config
 import matplotlib.pyplot as plt
@@ -48,8 +48,8 @@ config.hyperparameters = {
     },
     "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
-            "learning_rate": 0.0001,
-            "linear_hidden_units": [1024, 256],
+            "learning_rate": 0.001,
+            "linear_hidden_units": [800,200],
             "final_layer_activation": "Softmax",
             "batch_norm": False,
             "tau": 0.005,
@@ -57,8 +57,8 @@ config.hyperparameters = {
         },
 
         "Critic": {
-            "learning_rate": 0.0005,
-            "linear_hidden_units": [1024,256],
+            "learning_rate": 0.002,
+            "linear_hidden_units": [800,200],
             "final_layer_activation": None,
             "batch_norm": False,
             "buffer_size": 100000,
@@ -66,7 +66,7 @@ config.hyperparameters = {
             "gradient_clipping_norm": 5
         },
 
-        "min_steps_before_learning": 1000,
+        "min_steps_before_learning": 5000,
         "batch_size": 128,
         "discount_rate": 0.99,
         "mu": 0.0, #for O-H noise
