@@ -49,8 +49,8 @@ config.hyperparameters = {
     },
     "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
-            "learning_rate": 0.0001,
-            "linear_hidden_units": [500, 200],
+            "learning_rate": 0.001,
+            "linear_hidden_units": [800, 200],
             "final_layer_activation": "Softmax",
             "batch_norm": False,
             "tau": 0.005,
@@ -58,7 +58,7 @@ config.hyperparameters = {
         },
 
         "Critic": {
-            "learning_rate": 0.0005,
+            "learning_rate": 0.002,
             "linear_hidden_units": [500,200],
             "final_layer_activation": None,
             "batch_norm": False,
@@ -67,7 +67,7 @@ config.hyperparameters = {
             "gradient_clipping_norm": 5
         },
 
-        "min_steps_before_learning": 1000,
+        "min_steps_before_learning": 5000,
         "batch_size": 128,
         "discount_rate": 0.99,
         "mu": 0.0, #for O-H noise
@@ -91,7 +91,7 @@ num_episode = 10
 trials = 100
 action_type = ["random","greedy"]
 task_num = 30
-task_file = "../tasks.txt"
+task_file = "../tasks1.txt"
 # config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
 # config.environment.generate_offload_tasks(task_file, task_num, 10)
 for group in range(2,3):
