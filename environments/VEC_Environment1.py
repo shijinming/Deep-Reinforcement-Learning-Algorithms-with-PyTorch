@@ -44,7 +44,7 @@ class VEC_Environment1(gym.Env):
         self.high_priority_factor = -np.log(1+self.max_tau)
         self.low_priority_factor = np.log(1+min(self.tau))
 
-        self.action_space = spaces.Box(0, 1, shape=(2*self.num_vehicles,),dtype='float32')
+        self.action_space = spaces.Box(-1, 1, shape=(2,),dtype='float32')
         self.observation_space = spaces.Dict({
             "snr":spaces.Box(0,self.snr_ref,shape=(self.max_v,),dtype='float32'),
             # "time_remain":spaces.Box(0,100,shape=(self.max_v,),dtype='float32'),
@@ -187,10 +187,9 @@ class VEC_Environment1(gym.Env):
         if action_type=="greedy":
             v_id = np.argmax(self.s["freq_remain"])
         task = self.s["task"]
-        tmp = [0]*v_id+[1]+[0]*(self.num_vehicles-v_id-1)
-        fraction = np.argmax([self.compute_utility(tmp+[i/100]*self.num_vehicles, task)[0] for i in range(1,100)])
-        action = tmp+[(fraction+1)/100]*self.num_vehicles
-        return action
+        tmp = (v_id+0.5)/self.num_vehicles*2-1
+        fraction = np.argmax([self.compute_utility([tmp, i/100*2-1], task)[0] for i in range(1,100)])
+        return np.array([tmp, (fraction+1)/100*2-1])
 
     def load_offloading_tasks(self, file, index):
         a = []
@@ -213,15 +212,13 @@ class VEC_Environment1(gym.Env):
         return service_availability
 
     def compute_utility(self, action, task):
-        action_distribution = (np.array(action[:self.num_vehicles])+1)/2
-        action_distribution = action_distribution/sum(action_distribution)
-        v_id = np.random.choice(list(range(self.num_vehicles)), p=action_distribution)
+        v_id = int((action[0]+1)/2*self.num_vehicles)
         if v_id==self.num_vehicles:
             return 0, v_id, 0
         utility = -np.log(1+self.max_tau)
         v = self.vehicles[v_id]
         u_max = self.s["u_max"][v_id]
-        price = action[self.num_vehicles+v_id]
+        price = (action[1]+1)/2
         u_alpha = u_max - max(0, min(price, 1))*u_max
         cost = u_max - u_alpha + self.price*task[1]
         alpha_max = v["freq_remain"]/v["freq"]

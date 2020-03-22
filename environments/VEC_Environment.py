@@ -184,11 +184,12 @@ class VEC_Environment(gym.Env):
 
     def produce_action(self, action_type):
         if action_type=="random":
-            return self.action_space.sample()
+            v_id = np.random.choice(range(self.num_vehicles))
+            fraction = np.random.choice(range(self.price_level-1))
         if action_type=="greedy":
             v_id = np.argmax(self.s["freq_remain"])
-        task = self.s["task"]
-        fraction = np.argmax([self.compute_utility(v_id*self.price_level+i, task)[0] for i in range(1,self.price_level)])
+            task = self.s["task"]
+            fraction = np.argmax([self.compute_utility(v_id*self.price_level+i, task)[0] for i in range(1,self.price_level)])
         action = v_id*self.price_level + fraction + 1
         return action
 

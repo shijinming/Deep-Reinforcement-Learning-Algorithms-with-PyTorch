@@ -58,7 +58,7 @@ config.hyperparameters = {
 
         "Critic": {
             "learning_rate": 0.002,
-            "linear_hidden_units": [500,200],
+            "linear_hidden_units": [800,500],
             "final_layer_activation": None,
             "batch_norm": False,
             "buffer_size": 100000,
