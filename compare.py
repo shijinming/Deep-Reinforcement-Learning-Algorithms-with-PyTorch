@@ -13,7 +13,7 @@ from matplotlib import pyplot
 from random import randint
 from scipy.optimize import fsolve
 
-class VEC_Environment1(gym.Env):
+class VEC_Environment(gym.Env):
     environment_name = "Vehicular Edge Computing"
 
     def __init__(self, num_vehicles=50, task_num=30):
@@ -30,7 +30,7 @@ class VEC_Environment1(gym.Env):
         self.vehicle_F = range(5,11)  #GHz
         self.data_size = [0.05, 0.1, 0.15, 0.2] #MBytes
         self.comp_size = [0.2, 0.4, 0.6, 0.8, 1] #GHz
-        self.tau = [0.5, 1, 2, 4] #s
+        self.tau = [0.5, 1, 1.5, 2, 2.5] #s
         self.max_datasize = max(self.data_size)
         self.max_compsize = max(self.comp_size)
         self.max_tau = max(self.tau)
@@ -58,8 +58,8 @@ class VEC_Environment1(gym.Env):
         self.max_episode_steps = 100
         self._max_episode_steps = 100
         self.id = "VEC"
-        self.finish_count = [0,0,0,0]
-        self.finish_delay = [0,0,0,0]
+        self.finish_count = [0,0,0,0,0]
+        self.finish_delay = [0,0,0,0,0]
         self.utility = 0
         self.vehicles = [] #vehicles in the range
         self.tasks = [] #tasks for offloading
@@ -91,8 +91,8 @@ class VEC_Environment1(gym.Env):
             v["u_max"] = sum([np.log(1+alpha_max*i[2]) for i in v["tasks"]])
         with open("../finish_count.txt",'a') as f:
             f.write(str(self.utility)+' '+' '.join([str(i) for i in self.finish_count])+' '+' '.join([str(i) for i in self.finish_delay])+'\n')
-        self.finish_count = [0,0,0,0]
-        self.finish_delay = [0,0,0,0]
+        self.finish_count = [0,0,0,0,0]
+        self.finish_delay = [0,0,0,0,0]
         self.utility = 0
         task = self.tasks[0]
         self.s = {
@@ -240,15 +240,35 @@ class VEC_Environment1(gym.Env):
                     utility = self.low_priority_factor -cost
                 else:
                     utility = self.low_priority_factor*np.exp(-0.5*(t_total-task[2])) - cost
-                self.finish_count[int(np.log2(task[2]))+1] += 1
-                self.finish_delay[int(np.log2(task[2]))+1] += t_total
+                self.finish_count[int(task[2]/0.5)-1] += 1
+                self.finish_delay[int(task[2]/0.5)-1] += t_total
             else:
                 utility = 0 - cost
         elif task[3]==self.priority[1]:
             if t_total <=min(task[2], time_remain):
                 utility = np.log(1+task[2]-t_total) - cost
-                self.finish_count[int(np.log2(task[2]))+1] += 1
-                self.finish_delay[int(np.log2(task[2]))+1] += t_total
+                self.finish_count[int(task[2]/0.5)-1] += 1
+                self.finish_delay[int(task[2]/0.5)-1] += t_total
             else:
                 utility = self.high_priority_factor - cost
         return utility, v_id, freq_alloc
+
+num_vehicles = 30
+task_num = 50
+num_episode = 1000
+trials = 100
+action_type = ["random", "greedy"]
+
+for i in action_type:
+    for price_level in range(1,10,2):
+        results = []
+        rollings = []
+        env = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
+        for _ in range(num_episode):
+            env.reset()
+            reward = 0
+            for _ in range(task_num):
+                _,r,_,_=env.step(env.produce_action(i, price_level))
+                reward+=r
+            results.append(reward)
+            rollings.append(np.mean(results[-trials:]))
