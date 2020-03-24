@@ -3,7 +3,6 @@ import random
 from collections import namedtuple
 import gym
 import torch
-from torch.distributions import Categorical
 from gym import wrappers
 import numpy as np
 import matplotlib as mpl
@@ -30,21 +29,21 @@ class VEC_Environment(gym.Env):
         self.vehicle_F = range(5,11)  #GHz
         self.data_size = [0.05, 0.1, 0.15, 0.2] #MBytes
         self.comp_size = [0.2, 0.4, 0.6, 0.8, 1] #GHz
-        self.tau = [0.5, 1, 1.5, 2, 2.5] #s
+        self.tau = [0.5, 1, 2, 4] #s
         self.max_datasize = max(self.data_size)
         self.max_compsize = max(self.comp_size)
         self.max_tau = max(self.tau)
         self.priority = [0.5, 1]
         self.ref_price = 0.1
         self.price = 0.1
-        self.price_level = 100
+        self.price_level = 20
         self.service_threshold = 0.1
         self.local_priority = 0.01
         self.distance_factor = 1
         self.high_priority_factor = -np.log(1+self.max_tau)
         self.low_priority_factor = np.log(1+min(self.tau))
 
-        self.action_space = spaces.Box(-1, 1, shape=(2,),dtype='float32')
+        self.action_space = spaces.Discrete(self.num_vehicles*self.price_level)
         self.observation_space = spaces.Dict({
             "snr":spaces.Box(0,self.snr_ref,shape=(self.max_v,),dtype='float32'),
             # "time_remain":spaces.Box(0,100,shape=(self.max_v,),dtype='float32'),
@@ -58,8 +57,11 @@ class VEC_Environment(gym.Env):
         self.max_episode_steps = 100
         self._max_episode_steps = 100
         self.id = "VEC"
-        self.finish_count = [0,0,0,0,0]
-        self.finish_delay = [0,0,0,0,0]
+        self.high_count = [0,0,0,0]
+        self.high_delay = [0,0,0,0]
+        self.low_count = [0,0,0,0]
+        self.low_delay = [0,0,0,0]
+        self.count_file = "sac.txt"
         self.utility = 0
         self.vehicles = [] #vehicles in the range
         self.tasks = [] #tasks for offloading
@@ -89,10 +91,15 @@ class VEC_Environment(gym.Env):
             v["position"] = v["position_init"]
             alpha_max = v["freq_remain"]/v["freq"]
             v["u_max"] = sum([np.log(1+alpha_max*i[2]) for i in v["tasks"]])
-        with open("../finish_count.txt",'a') as f:
-            f.write(str(self.utility)+' '+' '.join([str(i) for i in self.finish_count])+' '+' '.join([str(i) for i in self.finish_delay])+'\n')
-        self.finish_count = [0,0,0,0,0]
-        self.finish_delay = [0,0,0,0,0]
+        with open(self.count_file,'a') as f:
+            f.write(str(self.utility)+' '+' '.join([str(i) for i in self.low_count])+' '
+            +' '.join([str(i) for i in self.low_delay])+' '
+            +' '.join([str(i) for i in self.high_count])+' '
+            +' '.join([str(i) for i in self.high_delay])+' '+'\n')
+        self.high_count = [0,0,0,0]
+        self.high_delay = [0,0,0,0]
+        self.low_count = [0,0,0,0]
+        self.low_delay = [0,0,0,0]
         self.utility = 0
         task = self.tasks[0]
         self.s = {
@@ -127,6 +134,8 @@ class VEC_Environment(gym.Env):
         interface to fit with the open AI gym specifications"""
         task = self.s["task"]
         reward, v_id, freq_alloc = self.compute_utility(action, task)
+        if v_id==self.num_vehicles:
+            return reward
         v = self.vehicles[v_id]
         v["freq"] -= freq_alloc
         v["freq_remain"] = max(0, v["freq"] - sum([i[1]/i[2] for i in v["tasks"]]))
@@ -180,16 +189,18 @@ class VEC_Environment(gym.Env):
                     priority = random.choice(self.priority)
                     task = [str(data_size), str(compute_size), str(max_t), str(priority)]
                     f.write(' '.join(task)+'\n')
+        
 
     def produce_action(self, action_type):
         if action_type=="random":
-            return self.action_space.sample()
+            v_id = np.random.choice(range(self.num_vehicles))
+            fraction = np.random.choice(range(self.price_level-1))
         if action_type=="greedy":
             v_id = np.argmax(self.s["freq_remain"])
-        task = self.s["task"]
-        tmp = (v_id+0.5)/self.num_vehicles*2-1
-        fraction = np.argmax([self.compute_utility([tmp, i/100*2-1], task)[0] for i in range(1,100)])
-        return np.array([tmp, (fraction+1)/100*2-1])
+            task = self.s["task"]
+            fraction = np.argmax([self.compute_utility(v_id*self.price_level+i, task)[0] for i in range(1,self.price_level)])
+        action = v_id*self.price_level + fraction + 1
+        return action
 
     def load_offloading_tasks(self, file, index):
         a = []
@@ -212,20 +223,19 @@ class VEC_Environment(gym.Env):
         return service_availability
 
     def compute_utility(self, action, task):
-        v_id = int((action[0]+1)/2*self.num_vehicles)
+        v_id = action//self.price_level
         if v_id==self.num_vehicles:
             return 0, v_id, 0
         utility = -np.log(1+self.max_tau)
         v = self.vehicles[v_id]
         u_max = self.s["u_max"][v_id]
-        price = (action[1]+1)/2
-        u_alpha = u_max - max(0, min(price, 1))*u_max
+        u_alpha = u_max - (action%self.price_level+1)/self.price_level*u_max
         cost = u_max - u_alpha + self.price*task[1]
         alpha_max = v["freq_remain"]/v["freq"]
         alpha = fsolve(lambda a:sum([np.log(1+a*i[2]) for i in v["tasks"]])-u_alpha, 0.001)[0]
         alpha = min(max(0,alpha), alpha_max)
         freq_alloc = v["freq"]-(v["freq"]-v["freq_remain"])/(1-alpha)
-        # fraction = action - int(action)
+        # fraction = (action%self.price_level)/self.price_level
         # freq_alloc = fraction*v["freq_remain"]
         if freq_alloc <= 0:
             return utility, v_id, 0
@@ -233,42 +243,61 @@ class VEC_Environment(gym.Env):
         t_total = task[0]/(self.bandwidth*np.log2(1+snr)) + task[1]/freq_alloc
         # time_remain = max(self.s["time_remain"][v_id], 0.00001)
         time_remain = max(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 0.00001)
-        # cost = freq_alloc/v["freq_init"]*self.ref_price*task[1]
+        # cost = self.ref_price*task[1]
         if task[3]==self.priority[0]:
             if t_total <= time_remain:
                 if t_total <= task[2]:
                     utility = self.low_priority_factor -cost
                 else:
                     utility = self.low_priority_factor*np.exp(-0.5*(t_total-task[2])) - cost
-                self.finish_count[int(task[2]/0.5)-1] += 1
-                self.finish_delay[int(task[2]/0.5)-1] += t_total
+                self.low_count[int(np.log2(task[2]))+1] += 1
+                self.low_delay[int(np.log2(task[2]))+1] += t_total
             else:
                 utility = 0 - cost
         elif task[3]==self.priority[1]:
             if t_total <=min(task[2], time_remain):
                 utility = np.log(1+task[2]-t_total) - cost
-                self.finish_count[int(task[2]/0.5)-1] += 1
-                self.finish_delay[int(task[2]/0.5)-1] += t_total
+                self.high_count[int(np.log2(task[2]))+1] += 1
+                self.high_delay[int(np.log2(task[2]))+1] += t_total
             else:
                 utility = self.high_priority_factor - cost
         return utility, v_id, freq_alloc
 
-num_vehicles = 30
-task_num = 50
-num_episode = 1000
+with open("../greedy.txt",'w+') as f:
+    f.write("")
+with open("../random.txt",'w+') as f:
+    f.write("")
+num_episode = 10
 trials = 100
-action_type = ["random", "greedy"]
-
-for i in action_type:
-    for price_level in range(1,10,2):
-        results = []
-        rollings = []
-        env = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
-        for _ in range(num_episode):
-            env.reset()
-            reward = 0
-            for _ in range(task_num):
-                _,r,_,_=env.step(env.produce_action(i, price_level))
-                reward+=r
-            results.append(reward)
-            rollings.append(np.mean(results[-trials:]))
+action_type = ["random","greedy"]
+task_num = 30
+task_file = "../tasks.txt"
+# config.environment = VEC_Environment1(num_vehicles=50, task_num=task_num)
+# config.environment.generate_offload_tasks(task_file, task_num, 10)
+for iter in range(100):
+    print("iter =",iter)
+    for num_vehicles in range(5,51,5):
+        environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
+        environment.generate_offload_tasks(task_file, task_num, 10)
+        environment.load_offloading_tasks(task_file, np.random.choice(range(10)))
+        for i in action_type:
+            print(i)
+            results = []
+            rollings = []
+            if i=="greedy":
+                num_episode = 5
+                environment.count_file = "../greedy.txt"
+            elif i=="random":
+                num_episode = 1000
+                environment.count_file = "../random.txt"
+            with open(environment.count_file,'a') as f:
+                f.write('num_vehicles='+str(num_vehicles)+'\n')
+            for _ in range(num_episode):
+                environment.reset()
+                reward = 0
+                for _ in range(task_num):
+                    _,r,_,_=environment.step(environment.produce_action(i))
+                    reward+=r
+                results.append(reward)
+                rollings.append(np.mean(results[-trials:]))
+            print("mean_reward=", np.mean(results),"max_reward=",max(results))
