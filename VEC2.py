@@ -15,8 +15,8 @@ config = Config()
 config.seed = 1
     
 config.num_episodes_to_run = 8000
-config.file_to_save_data_results = "results/data_and_graphs/VEC.pkl"
-config.file_to_save_results_graph = "results/data_and_graphs/VEC.png"
+# config.file_to_save_data_results = "results/data_and_graphs/VEC.pkl"
+# config.file_to_save_results_graph = "results/data_and_graphs/VEC.png"
 config.show_solution_score = False
 config.visualise_individual_results = False
 config.visualise_overall_agent_results = False
@@ -26,7 +26,7 @@ config.use_GPU = True
 config.overwrite_existing_results_file = False
 config.randomise_random_seed = True
 config.save_model = False
-config.device = "cuda:0"
+config.device = "cuda:1"
 
 config.hyperparameters = {
     "DQN_Agents": {
@@ -48,7 +48,7 @@ config.hyperparameters = {
     },
     "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
-            "learning_rate": 0.001,
+            "learning_rate": 0.0005,
             "linear_hidden_units": [1200, 800],
             "final_layer_activation": "Softmax",
             "batch_norm": False,
@@ -57,7 +57,7 @@ config.hyperparameters = {
         },
 
         "Critic": {
-            "learning_rate": 0.002,
+            "learning_rate": 0.001,
             "linear_hidden_units": [800,500],
             "final_layer_activation": None,
             "batch_norm": False,
@@ -83,41 +83,46 @@ config.hyperparameters = {
         "clip_rewards":False 
     }
 }
-with open("../finish_count.txt",'w+') as f:
-    f.write("")
+
+numV=50
 num_episode = 10
 trials = 100
 action_type = ["random","greedy"]
 task_num = 30
 task_file = "../tasks.txt"
-# config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
-# config.environment.generate_offload_tasks(task_file, task_num, 10)
-for group in range(1,2):
-    print("group =",group)
-    for num_vehicles in [30]:
+config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
+config.environment.generate_priority_tasks(task_file, 10)
+count_file = "../sac{}.txt".format(numV)
+with open(count_file,'w+') as f:
+    f.write("")
+for group in [1]:
+    print("iteration=",iter)
+    for num_vehicles in [numV]:
+        print("num_vehicles=",num_vehicles)
         config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
         config.environment.load_offloading_tasks(task_file, group)
-        for i in action_type:
-            print(i)
-            with open("../finish_count.txt",'a') as f:
-                f.write(i+'\n')
-            results = []
-            rollings = []
-            if i=="greedy":
-                num_episode = 5
-            elif i=="random":
-                num_episode = 1000
-            for _ in range(num_episode):
-                config.environment.reset()
-                reward = 0
-                for _ in range(task_num):
-                    _,r,_,_=config.environment.step(config.environment.produce_action(i))
-                    reward+=r
-                results.append(reward)
-                rollings.append(np.mean(results[-trials:]))
-            print("mean_reward=", np.mean(results),"max_reward=",max(results))
-        with open("../finish_count.txt",'a') as f:
-            f.write('SAC\n')
+        config.environment.count_file = count_file
+        # for i in action_type:
+        #     print(i)
+        #     with open("../finish_count.txt",'a') as f:
+        #         f.write(i+'\n')
+        #     results = []
+        #     rollings = []
+        #     if i=="greedy":
+        #         num_episode = 5
+        #     elif i=="random":
+        #         num_episode = 1000
+        #     for _ in range(num_episode):
+        #         config.environment.reset()
+        #         reward = 0
+        #         for _ in range(task_num):
+        #             _,r,_,_=config.environment.step(config.environment.produce_action(i))
+        #             reward+=r
+        #         results.append(reward)
+        #         rollings.append(np.mean(results[-trials:]))
+        #     print("mean_reward=", np.mean(results),"max_reward=",max(results))
+        with open(count_file,'a') as f:
+            f.write("num_vehicles="+str(num_vehicles)+'\n')
         AGENTS = [SAC_Discrete] 
         trainer = Trainer(config, AGENTS)
         trainer.run_games_for_agents()

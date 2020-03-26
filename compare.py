@@ -36,7 +36,7 @@ class VEC_Environment(gym.Env):
         self.priority = [0.5, 1]
         self.ref_price = 0.1
         self.price = 0.1
-        self.price_level = 20
+        self.price_level = 10
         self.service_threshold = 0.1
         self.local_priority = 0.01
         self.distance_factor = 1
@@ -133,7 +133,7 @@ class VEC_Environment(gym.Env):
         """Computes the reward we would have got with this achieved goal and desired goal. Must be of this exact
         interface to fit with the open AI gym specifications"""
         task = self.s["task"]
-        reward, v_id, freq_alloc = self.compute_utility(action, task)
+        reward, v_id, freq_alloc = self.compute_utility(action, task, True)
         if v_id==self.num_vehicles:
             return reward
         v = self.vehicles[v_id]
@@ -190,16 +190,15 @@ class VEC_Environment(gym.Env):
                     task = [str(data_size), str(compute_size), str(max_t), str(priority)]
                     f.write(' '.join(task)+'\n')
         
-
     def produce_action(self, action_type):
         if action_type=="random":
             v_id = np.random.choice(range(self.num_vehicles))
-            fraction = np.random.choice(range(self.price_level-1))
+            fraction = np.random.choice(range(self.price_level))
         if action_type=="greedy":
             v_id = np.argmax(self.s["freq_remain"])
             task = self.s["task"]
-            fraction = np.argmax([self.compute_utility(v_id*self.price_level+i, task)[0] for i in range(1,self.price_level)])
-        action = v_id*self.price_level + fraction + 1
+            fraction = np.argmax([self.compute_utility(v_id*self.price_level+i, task, False)[0] for i in range(self.price_level)])
+        action = v_id*self.price_level + fraction
         return action
 
     def load_offloading_tasks(self, file, index):
@@ -222,7 +221,7 @@ class VEC_Environment(gym.Env):
         # print(service_availability,end=',')
         return service_availability
 
-    def compute_utility(self, action, task):
+    def compute_utility(self, action, task, is_count):
         v_id = action//self.price_level
         if v_id==self.num_vehicles:
             return 0, v_id, 0
@@ -250,36 +249,41 @@ class VEC_Environment(gym.Env):
                     utility = self.low_priority_factor -cost
                 else:
                     utility = self.low_priority_factor*np.exp(-0.5*(t_total-task[2])) - cost
-                self.low_count[int(np.log2(task[2]))+1] += 1
-                self.low_delay[int(np.log2(task[2]))+1] += t_total
+                if is_count:
+                    self.low_count[int(np.log2(task[2]))+1] += 1
+                    self.low_delay[int(np.log2(task[2]))+1] += t_total
             else:
                 utility = 0 - cost
         elif task[3]==self.priority[1]:
             if t_total <=min(task[2], time_remain):
                 utility = np.log(1+task[2]-t_total) - cost
-                self.high_count[int(np.log2(task[2]))+1] += 1
-                self.high_delay[int(np.log2(task[2]))+1] += t_total
+                if is_count:
+                    self.high_count[int(np.log2(task[2]))+1] += 1
+                    self.high_delay[int(np.log2(task[2]))+1] += t_total
             else:
                 utility = self.high_priority_factor - cost
         return utility, v_id, freq_alloc
+
+
+
 
 with open("../greedy.txt",'w+') as f:
     f.write("")
 with open("../random.txt",'w+') as f:
     f.write("")
+
 num_episode = 10
 trials = 100
 action_type = ["random","greedy"]
 task_num = 30
 task_file = "../tasks.txt"
-# config.environment = VEC_Environment1(num_vehicles=50, task_num=task_num)
-# config.environment.generate_offload_tasks(task_file, task_num, 10)
+# environment = VEC_Environment(num_vehicles=30, task_num=task_num)
+# environment.generate_offload_tasks(task_file, task_num, 100)
 for iter in range(100):
     print("iter =",iter)
     for num_vehicles in range(5,51,5):
         environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
-        environment.generate_offload_tasks(task_file, task_num, 10)
-        environment.load_offloading_tasks(task_file, np.random.choice(range(10)))
+        environment.load_offloading_tasks(task_file, 1)
         for i in action_type:
             print(i)
             results = []

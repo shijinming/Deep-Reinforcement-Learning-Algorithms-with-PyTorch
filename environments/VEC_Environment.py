@@ -27,8 +27,8 @@ class VEC_Environment(gym.Env):
         self.snr_ref = 1 # reference SNR, which is used to compute rate by B*log2(1+snr_ref*d^-a) 
         self.snr_alpha = 2
         self.vehicle_F = range(5,11)  #GHz
-        self.data_size = [0.05, 0.1, 0.15, 0.2] #MBytes
-        self.comp_size = [0.2, 0.4, 0.6, 0.8, 1] #GHz
+        self.data_size = [0.05, 0.1] #MBytes
+        self.comp_size = [0.2, 0.4] #GHz
         self.tau = [0.5, 1, 2, 4] #s
         self.max_datasize = max(self.data_size)
         self.max_compsize = max(self.comp_size)
@@ -36,12 +36,12 @@ class VEC_Environment(gym.Env):
         self.priority = [0.5, 1]
         self.ref_price = 0.1
         self.price = 0.1
-        self.price_level = 20
+        self.price_level = 10
         self.service_threshold = 0.1
         self.local_priority = 0.01
         self.distance_factor = 1
         self.high_priority_factor = -np.log(1+self.max_tau)
-        self.low_priority_factor = np.log(1+min(self.tau))
+        self.low_priority_factor = np.log(1+np.min(self.tau))
 
         self.action_space = spaces.Discrete(self.num_vehicles*self.price_level)
         self.observation_space = spaces.Dict({
@@ -172,9 +172,9 @@ class VEC_Environment(gym.Env):
         for v in self.vehicles:
             v["tasks"] = []
             for _ in range(random.randint(1,self.max_local_task)):
-                data_size = random.choice(self.data_size)
-                compute_size = random.choice(self.comp_size)
                 max_t = random.choice(self.tau)
+                data_size = random.uniform(self.data_size[0]*max_t*2,self.data_size[1]*max_t*2)
+                compute_size = random.uniform(self.comp_size[0]*max_t*2,self.comp_size[1]*max_t*2)
                 priority = random.choice(self.priority[1:])
                 v["tasks"].append([data_size, compute_size, max_t, priority])
     
@@ -183,12 +183,28 @@ class VEC_Environment(gym.Env):
             for _ in range(group_num):
                 f.write("tasks:\n")
                 for _ in range(task_num):
-                    data_size = random.choice(self.data_size)
-                    compute_size = random.choice(self.comp_size)
                     max_t = random.choice(self.tau)
+                    data_size = random.uniform(self.data_size[0]*max_t*2,self.data_size[1]*max_t*2)
+                    compute_size = random.uniform(self.comp_size[0]*max_t*2,self.comp_size[1]*max_t*2)
                     priority = random.choice(self.priority)
                     task = [str(data_size), str(compute_size), str(max_t), str(priority)]
                     f.write(' '.join(task)+'\n')
+
+    def generate_priority_tasks(self, file, group_num):
+        with open(file,'w+') as f:
+            for _ in range(group_num):
+                f.write("tasks:\n")
+                tasks = []
+                for i in [0.5,1]:
+                    for j in range(len(self.tau)):
+                        for _ in range(4):
+                            max_t = self.tau[j]
+                            data_size = random.uniform(self.data_size[0]*max_t*2,self.data_size[1]*max_t*2)
+                            compute_size = random.uniform(self.comp_size[0]*max_t*2,self.comp_size[1]*max_t*2)
+                            priority = i
+                            tasks.append(str(data_size)+' '+str(compute_size)+' '+str(max_t)+' '+str(priority))
+                np.random.shuffle(tasks)
+                f.write('\n'.join(tasks)+'\n')
         
 
     def produce_action(self, action_type):
@@ -248,12 +264,13 @@ class VEC_Environment(gym.Env):
             if t_total <= time_remain:
                 if t_total <= task[2]:
                     utility = self.low_priority_factor -cost
+                    self.low_count[int(np.log2(task[2]))+1] += 1
                 else:
                     utility = self.low_priority_factor*np.exp(-0.5*(t_total-task[2])) - cost
-                self.low_count[int(np.log2(task[2]))+1] += 1
                 self.low_delay[int(np.log2(task[2]))+1] += t_total
             else:
                 utility = 0 - cost
+                self.low_delay[int(np.log2(task[2]))+1] += 1000
         elif task[3]==self.priority[1]:
             if t_total <=min(task[2], time_remain):
                 utility = np.log(1+task[2]-t_total) - cost
