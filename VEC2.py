@@ -84,20 +84,19 @@ config.hyperparameters = {
     }
 }
 
-numV=50
+group = 1
+count_file = "../sac{}.txt".format(group)
 num_episode = 10
 trials = 100
 action_type = ["random","greedy"]
-task_num = 30
+task_num = 32
 task_file = "../tasks.txt"
-config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
-config.environment.generate_priority_tasks(task_file, 10)
-count_file = "../sac{}.txt".format(numV)
+# config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
+# config.environment.generate_priority_tasks(task_file, 10)
 with open(count_file,'w+') as f:
     f.write("")
-for group in [1]:
-    print("iteration=",iter)
-    for num_vehicles in [numV]:
+for _ in range(1):
+    for num_vehicles in range(5,51,5):
         print("num_vehicles=",num_vehicles)
         config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
         config.environment.load_offloading_tasks(task_file, group)
