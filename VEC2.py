@@ -84,7 +84,7 @@ config.hyperparameters = {
     }
 }
 
-group = 1
+group = 5
 count_file = "../sac{}.txt".format(group)
 num_episode = 10
 trials = 100
