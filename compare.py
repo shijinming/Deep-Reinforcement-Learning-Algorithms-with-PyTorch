@@ -214,7 +214,7 @@ class VEC_Environment(gym.Env):
         if action_type=="greedy":
             v_id = np.argmax(self.s["freq_remain"])
             task = self.s["task"]
-            fraction = np.argmax([self.compute_utility(v_id*self.price_level+i, task)[0] for i in range(1,self.price_level)])
+            fraction = np.argmax([self.compute_utility(v_id*self.price_level+i, task, False)[0] for i in range(1,self.price_level)])
         action = v_id*self.price_level + fraction + 1
         return action
 
@@ -238,7 +238,7 @@ class VEC_Environment(gym.Env):
         # print(service_availability,end=',')
         return service_availability
 
-    def compute_utility(self, action, task):
+    def compute_utility(self, action, task, is_count=True):
         v_id = action//self.price_level
         if v_id==self.num_vehicles:
             return 0, v_id, 0
@@ -264,18 +264,19 @@ class VEC_Environment(gym.Env):
             if t_total <= time_remain:
                 if t_total <= task[2]:
                     utility = self.low_priority_factor -cost
-                    self.low_count[int(np.log2(task[2]))+1] += 1
                 else:
                     utility = self.low_priority_factor*np.exp(-0.5*(t_total-task[2])) - cost
-                self.low_delay[int(np.log2(task[2]))+1] += t_total
+                if is_count:
+                    self.low_count[int(np.log2(task[2]))+1] += 1
+                    self.low_delay[int(np.log2(task[2]))+1] += t_total
             else:
                 utility = 0 - cost
-                self.low_delay[int(np.log2(task[2]))+1] += 1000
         elif task[3]==self.priority[1]:
             if t_total <=min(task[2], time_remain):
                 utility = np.log(1+task[2]-t_total) - cost
-                self.high_count[int(np.log2(task[2]))+1] += 1
-                self.high_delay[int(np.log2(task[2]))+1] += t_total
+                if is_count:
+                    self.high_count[int(np.log2(task[2]))+1] += 1
+                    self.high_delay[int(np.log2(task[2]))+1] += t_total
             else:
                 utility = self.high_priority_factor - cost
         return utility, v_id, freq_alloc
@@ -296,7 +297,7 @@ for iter in range(100):
     print("iter =",iter)
     for num_vehicles in range(5,51,5):
         environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
-        environment.load_offloading_tasks(task_file, iter%10+1)
+        environment.load_offloading_tasks(task_file, iter%5+1)
         for i in action_type:
             print(i)
             results = []
