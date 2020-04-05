@@ -295,3 +295,42 @@ class VEC_Environment(gym.Env):
             else:
                 utility = self.high_priority_factor - cost
         return utility, v_id, freq_alloc
+
+with open("../greedy_change.txt",'w+') as f:
+    f.write("")
+with open("../random_change.txt",'w+') as f:
+    f.write("")
+
+num_episode = 10
+trials = 100
+action_type = ["random","greedy"]
+task_num = 32
+task_file = "../change_tasks.txt"
+# environment = VEC_Environment(num_vehicles=30, task_num=task_num)
+# environment.generate_offload_tasks(task_file, task_num, 100)
+for iter in range(100):
+    print("iter =",iter)
+    for task_num in range(8,65,8):
+        environment = VEC_Environment(num_vehicles=30, task_num=task_num)
+        environment.load_offloading_tasks(task_file, task_num//8)
+        for i in action_type:
+            print(i)
+            results = []
+            rollings = []
+            if i=="greedy":
+                num_episode = 5
+                environment.count_file = "../greedy_change.txt"
+            elif i=="random":
+                num_episode = 1000
+                environment.count_file = "../random_change.txt"
+            with open(environment.count_file,'a') as f:
+                f.write('task_num='+str(task_num)+'\n')
+            for _ in range(num_episode):
+                environment.reset()
+                reward = 0
+                for _ in range(task_num):
+                    _,r,_,_=environment.step(environment.produce_action(i))
+                    reward+=r
+                results.append(reward)
+                rollings.append(np.mean(results[-trials:]))
+            print("mean_reward=", np.mean(results),"max_reward=",max(results))

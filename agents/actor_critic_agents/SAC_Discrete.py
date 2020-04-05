@@ -31,7 +31,7 @@ class SAC_Discrete(SAC):
         Base_Agent.copy_model_over(self.critic_local_2, self.critic_target_2)
         self.memory = Replay_Buffer(self.hyperparameters["Critic"]["buffer_size"], self.hyperparameters["batch_size"],
                                     self.config.seed)
-
+        self.memory.device = config.device
         self.actor_local = self.create_NN(input_dim=self.state_size, output_dim=self.action_size, key_to_use="Actor")
         self.actor_optimizer = torch.optim.Adam(self.actor_local.parameters(),
                                           lr=self.hyperparameters["Actor"]["learning_rate"], eps=1e-4)

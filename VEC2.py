@@ -26,7 +26,7 @@ config.use_GPU = True
 config.overwrite_existing_results_file = False
 config.randomise_random_seed = True
 config.save_model = False
-config.device = "cuda:1"
+config.device = "cuda:0"
 
 config.hyperparameters = {
     "DQN_Agents": {
@@ -84,19 +84,19 @@ config.hyperparameters = {
     }
 }
 
-group = 4
-count_file = "../sac{}.txt".format(group)
+group = 5
+count_file = "../sac_tmp{}.txt".format(group)
 num_episode = 10
 trials = 100
 action_type = ["random","greedy"]
 task_num = 32
 task_file = "../tasks.txt"
 # config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
-# config.environment.generate_priority_tasks(task_file, 10)
+# config.environment.generate_change_tasks("../change_tasks.txt", 8)
 with open(count_file,'w+') as f:
     f.write("")
-for _ in range(1):
-    for num_vehicles in range(5,51,5):
+for iter in range(1):
+    for num_vehicles in [15,25]:
         print("num_vehicles=",num_vehicles)
         config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
         config.environment.load_offloading_tasks(task_file, group)
