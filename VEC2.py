@@ -26,7 +26,7 @@ config.use_GPU = True
 config.overwrite_existing_results_file = False
 config.randomise_random_seed = True
 config.save_model = False
-config.device = "cuda:0"
+config.device = "cuda:1"
 
 config.hyperparameters = {
     "DQN_Agents": {
