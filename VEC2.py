@@ -50,7 +50,7 @@ config.hyperparameters = {
         "Actor": {
             "learning_rate": 0.0005,
             "linear_hidden_units": [1200, 800],
-            "final_layer_activation": "Softmax",
+            "final_layer_activation": None,
             "batch_norm": False,
             "tau": 0.005,
             "gradient_clipping_norm": 5
@@ -66,7 +66,7 @@ config.hyperparameters = {
             "gradient_clipping_norm": 5
         },
 
-        "min_steps_before_learning": 5000,
+        "min_steps_before_learning": 1000,
         "batch_size": 256,
         "discount_rate": 0.99,
         "mu": 0.0, #for O-H noise
@@ -85,18 +85,18 @@ config.hyperparameters = {
 }
 
 group = 5
-count_file = "../sac_tmp{}.txt".format(group)
+count_file = "../fraction/sac_tmp{}.txt".format(group)
 num_episode = 10
 trials = 100
-action_type = ["random","greedy"]
+action_type = []
 task_num = 32
-task_file = "../tasks.txt"
-# config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
-# config.environment.generate_change_tasks("../change_tasks.txt", 8)
+task_file = "../fraction/tasks.txt"
+config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
+config.environment.generate_offload_tasks(task_file, task_num, 10)
 with open(count_file,'w+') as f:
     f.write("")
 for iter in range(1):
-    for num_vehicles in [15,25]:
+    for num_vehicles in [25]:
         print("num_vehicles=",num_vehicles)
         config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
         config.environment.load_offloading_tasks(task_file, group)
@@ -122,6 +122,6 @@ for iter in range(1):
         #     print("mean_reward=", np.mean(results),"max_reward=",max(results))
         with open(count_file,'a') as f:
             f.write("num_vehicles="+str(num_vehicles)+'\n')
-        AGENTS = [SAC_Discrete] 
+        AGENTS = [SAC] 
         trainer = Trainer(config, AGENTS)
         trainer.run_games_for_agents()

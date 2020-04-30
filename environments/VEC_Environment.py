@@ -223,10 +223,7 @@ class VEC_Environment(gym.Env):
         return service_availability
 
     def compute_utility(self, action, task):
-        v_id = np.argmax(action[1:])
-        if v_id==self.num_vehicles:
-            return 0, v_id, 0
-        utility = -np.log(1+self.max_tau)
+        v_id = np.argmax(action[1:self.num_vehicles+1])
         v = self.vehicles[v_id]
         snr = self.s["snr"][v_id]
         time_remain = max(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 0.00001)
@@ -237,7 +234,7 @@ class VEC_Environment(gym.Env):
         fraction = t_local/(t_local + t_serv)
         t_total = fraction*t_serv
         cost = (fraction*self.serv_price + (1-fraction)*self.local_price)*task[1]
-        if t_total <=min(task[2], time_remain):
+        if t_total <= min(task[2], time_remain):
             utility = np.log(1+task[2]-t_total) - cost
             self.count[int(np.log2(task[2]))+1] += 1
             self.delay[int(np.log2(task[2]))+1] += t_total
