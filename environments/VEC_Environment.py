@@ -30,7 +30,7 @@ class VEC_Environment(gym.Env):
         self.snr_alpha = 2
         self.vehicle_F = range(5,11)  #GHz
         self.data_size = [0.1, 0.2] #MBytes
-        self.comp_size = [0.5, 1] #GHz
+        self.comp_size = [0.2, 0.5] #GHz
         self.tau = [0.5, 1, 2, 4] #s
         self.max_datasize = max(self.data_size)
         self.max_compsize = max(self.comp_size)
@@ -65,6 +65,8 @@ class VEC_Environment(gym.Env):
         self.init_vehicles()
         # self.generate_offload_tasks()
         self.generate_local_tasks()
+        with open("../fraction/action.txt",'w+') as f:
+            f.write('')
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -102,6 +104,8 @@ class VEC_Environment(gym.Env):
     def step(self, action):
         self.step_count += 1
         self.reward = self.compute_reward(action)
+        with open("../fraction/action.txt",'a') as f:
+            f.write(' '.join([str(self.reward)]+[str(i) for i in action])+'\n')
         self.utility += self.reward
         self.move_vehicles()
         if self.step_count >= self.task_num_per_episode: 
@@ -180,13 +184,12 @@ class VEC_Environment(gym.Env):
             for group in range(1, group_num+1):
                 f.write("tasks:\n")
                 tasks = []
-                for i in [0.5,1]:
-                    for j in range(len(self.tau)):
-                        for _ in range(group):
-                            max_t = self.tau[j]
-                            data_size = random.uniform(self.data_size[0]*max_t*2,self.data_size[1]*max_t*2)
-                            compute_size = random.uniform(self.comp_size[0]*max_t*2,self.comp_size[1]*max_t*2)
-                            tasks.append(str(data_size)+' '+str(compute_size)+' '+str(max_t))
+                for j in range(len(self.tau)):
+                    for _ in range(group):
+                        max_t = self.tau[j]
+                        data_size = random.uniform(self.data_size[0]*max_t*2,self.data_size[1]*max_t*2)
+                        compute_size = random.uniform(self.comp_size[0]*max_t*2,self.comp_size[1]*max_t*2)
+                        tasks.append(str(data_size)+' '+str(compute_size)+' '+str(max_t))
                 np.random.shuffle(tasks)
                 f.write('\n'.join(tasks)+'\n')
         
@@ -197,9 +200,8 @@ class VEC_Environment(gym.Env):
             local_fraction = np.random.random()
             serv_fraction = np.random.random()
         if action_type=="greedy":
-            v_id = np.argmax(self.s["freq_remain"])
-            fraction = np.argmax([self.compute_utility(v_id*self.price_level+i, task)[0] for i in range(1,self.price_level)])
-        action = np.array([v_id, local_fraction, serv_fraction])
+            v_id, local_fraction, serv_fraction = self.greedy_action()
+        action = np.array([(v_id+0.5)/self.num_vehicles, local_fraction, serv_fraction])*2-1
         return action
 
     def load_offloading_tasks(self, file, index):
@@ -246,3 +248,30 @@ class VEC_Environment(gym.Env):
         else:
             utility = self.penalty - cost
         return utility, v_id, local_freq, serv_freq
+
+    def greedy_action(self):
+        task = self.s["task"]
+        v_id = np.argmax(self.s["freq_remain"][1:])
+        v = self.vehicles[v_id]
+        t_trans = task[0]/(self.bandwidth*np.log2(1+self.s["snr"][v_id]))
+        result=[0,0,0]
+        max_u = -1000
+        for i in range(50):
+            local_freq = (i+1)/50*self.local_remain
+            t_local = task[1]/local_freq
+            for j in range(50):
+                serv_freq = (j+1)/50*v["freq_remain"]
+                t_serv = t_trans + task[1]/serv_freq
+                fraction = t_local/(t_local + t_serv)
+                t_total = fraction*t_serv
+                cost = (fraction*self.serv_price + (1-fraction)*self.local_price)*task[1]
+                time_remain = max(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 0.00001)
+                if t_total <= min(task[2], time_remain):
+                    utility = np.log(1+task[2]-t_total) - cost
+                else:
+                    utility = self.penalty - cost
+                if utility>max_u:
+                    result = [utility, i, j]
+                    max_u = utility
+        return v_id, result[1], result[2]
+
