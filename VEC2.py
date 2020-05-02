@@ -14,7 +14,7 @@ import numpy as np
 config = Config()
 config.seed = 1
     
-config.num_episodes_to_run = 5000
+config.num_episodes_to_run = 8000
 config.file_to_save_data_results = "results/data_and_graphs/VEC.pkl"
 config.file_to_save_results_graph = "results/data_and_graphs/VEC.png"
 config.show_solution_score = False
@@ -48,7 +48,7 @@ config.hyperparameters = {
     },
     "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
-            "learning_rate": 0.0005,
+            "learning_rate": 0.0002,
             "linear_hidden_units": [512, 256],
             "final_layer_activation": None,
             "batch_norm": False,
@@ -57,7 +57,7 @@ config.hyperparameters = {
         },
 
         "Critic": {
-            "learning_rate": 0.001,
+            "learning_rate": 0.0005,
             "linear_hidden_units": [256, 128],
             "final_layer_activation": None,
             "batch_norm": False,
@@ -88,7 +88,7 @@ group = 5
 count_file = "../fraction/sac_tmp{}.txt".format(group)
 num_episode = 10
 trials = 100
-action_type = []
+action_type = ["random","greedy"]
 task_num = 32
 task_file = "../fraction/tasks.txt"
 # config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
@@ -101,25 +101,25 @@ for iter in range(1):
         config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
         config.environment.load_offloading_tasks(task_file, group)
         config.environment.count_file = count_file
-        # for i in action_type:
-        #     print(i)
-        #     with open("../finish_count.txt",'a') as f:
-        #         f.write(i+'\n')
-        #     results = []
-        #     rollings = []
-        #     if i=="greedy":
-        #         num_episode = 5
-        #     elif i=="random":
-        #         num_episode = 1000
-        #     for _ in range(num_episode):
-        #         config.environment.reset()
-        #         reward = 0
-        #         for _ in range(task_num):
-        #             _,r,_,_=config.environment.step(config.environment.produce_action(i))
-        #             reward+=r
-        #         results.append(reward)
-        #         rollings.append(np.mean(results[-trials:]))
-        #     print("mean_reward=", np.mean(results),"max_reward=",max(results))
+        for i in action_type:
+            print(i)
+            with open("../fraction/finish_count.txt",'a') as f:
+                f.write(i+'\n')
+            results = []
+            rollings = []
+            if i=="greedy":
+                num_episode = 5
+            elif i=="random":
+                num_episode = 1000
+            for _ in range(num_episode):
+                config.environment.reset()
+                reward = 0
+                for _ in range(task_num):
+                    _,r,_,_=config.environment.step(config.environment.produce_action(i))
+                    reward+=r
+                results.append(reward)
+                rollings.append(np.mean(results[-trials:]))
+            print("mean_reward=", np.mean(results),"max_reward=",max(results))
         with open(count_file,'a') as f:
             f.write("num_vehicles="+str(num_vehicles)+'\n')
         AGENTS = [SAC] 

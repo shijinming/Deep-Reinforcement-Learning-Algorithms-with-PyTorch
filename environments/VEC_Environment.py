@@ -36,8 +36,8 @@ class VEC_Environment(gym.Env):
         self.max_compsize = max(self.comp_size)
         self.max_tau = max(self.tau)
         self.ref_price = 0.1
-        self.local_price = 0.1
-        self.serv_price = 0.2
+        self.local_price = 0.05
+        self.serv_price = 0.1
         self.price_level = 10
         self.service_threshold = 0.1
         self.local_priority = 0.01
@@ -236,11 +236,13 @@ class VEC_Environment(gym.Env):
         time_remain = max(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 0.00001)
         local_freq = action[1]*self.local_remain
         serv_freq = action[2]*v["freq_remain"]
+        local_freq = 0.00001 if local_freq==0 else local_freq
+        serv_freq = 0.00001 if serv_freq==0 else serv_freq
         t_local = task[1]/local_freq
         t_serv = task[0]/(self.bandwidth*np.log2(1+snr)) + task[1]/serv_freq
         fraction = t_local/(t_local + t_serv)
         t_total = fraction*t_serv
-        cost = (fraction*self.serv_price + (1-fraction)*self.local_price)*task[1]
+        cost = (fraction*self.serv_price*serv_freq + (1-fraction)*self.local_price*local_freq)*task[1]
         if t_total <= min(task[2], time_remain):
             utility = np.log(1+task[2]-t_total) - cost
             self.count[int(np.log2(task[2]))+1] += 1
@@ -256,15 +258,21 @@ class VEC_Environment(gym.Env):
         t_trans = task[0]/(self.bandwidth*np.log2(1+self.s["snr"][v_id]))
         result=[0,0,0]
         max_u = -1000
-        for i in range(50):
-            local_freq = (i+1)/50*self.local_remain
-            t_local = task[1]/local_freq
-            for j in range(50):
-                serv_freq = (j+1)/50*v["freq_remain"]
-                t_serv = t_trans + task[1]/serv_freq
+        step = 50
+        if v["freq_remain"]<=0:
+            return v_id, 0, 0
+        for j in range(1, step+1):
+            serv_freq = j/step*v["freq_remain"]
+            t_serv = t_trans + task[1]/serv_freq
+            for i in range(1, step+1):
+                local_freq = i/step*self.local_remain
+                if local_freq == 0:
+                    result[1]=0
+                    break
+                t_local = task[1]/local_freq
                 fraction = t_local/(t_local + t_serv)
                 t_total = fraction*t_serv
-                cost = (fraction*self.serv_price + (1-fraction)*self.local_price)*task[1]
+                cost = (fraction*self.serv_price*serv_freq + (1-fraction)*self.local_price*local_freq)*task[1]
                 time_remain = max(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 0.00001)
                 if t_total <= min(task[2], time_remain):
                     utility = np.log(1+task[2]-t_total) - cost
@@ -273,5 +281,6 @@ class VEC_Environment(gym.Env):
                 if utility>max_u:
                     result = [utility, i, j]
                     max_u = utility
-        return v_id, result[1], result[2]
+        # print(str(result[1])+' '+str(result[2]), end=',')
+        return v_id, result[1]/step, result[2]/step
 
