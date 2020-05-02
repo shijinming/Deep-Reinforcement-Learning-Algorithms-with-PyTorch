@@ -82,7 +82,7 @@ class Trainer(object):
                 self.visualise_overall_agent_results(agent_rolling_score_results, agent_name, show_mean_and_std_range=True)
         if self.config.file_to_save_data_results: self.save_obj(self.results, self.config.file_to_save_data_results)
         if self.config.file_to_save_results_graph: plt.savefig(self.config.file_to_save_results_graph, bbox_inches="tight")
-        plt.show()
+        # plt.show()
         return self.results
 
     def create_object_to_store_results(self):
@@ -120,7 +120,7 @@ class Trainer(object):
             agent_results.append([game_scores, rolling_scores, len(rolling_scores), -1 * max(rolling_scores), time_taken])
             if self.config.visualise_individual_results:
                 self.visualise_overall_agent_results([rolling_scores], agent_name, show_each_run=True)
-                plt.show()
+                # plt.show()
             agent_round += 1
         self.results[agent_name] = agent_results
 

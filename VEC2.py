@@ -14,16 +14,16 @@ import numpy as np
 config = Config()
 config.seed = 1
     
-config.num_episodes_to_run = 8000
-# config.file_to_save_data_results = "results/data_and_graphs/VEC.pkl"
-# config.file_to_save_results_graph = "results/data_and_graphs/VEC.png"
+config.num_episodes_to_run = 5000
+config.file_to_save_data_results = "results/data_and_graphs/VEC.pkl"
+config.file_to_save_results_graph = "results/data_and_graphs/VEC.png"
 config.show_solution_score = False
-config.visualise_individual_results = False
-config.visualise_overall_agent_results = False
+config.visualise_individual_results = True
+config.visualise_overall_agent_results = True
 config.standard_deviation_results = 1.0
 config.runs_per_agent = 1
 config.use_GPU = True
-config.overwrite_existing_results_file = False
+config.overwrite_existing_results_file = True
 config.randomise_random_seed = True
 config.save_model = False
 config.device = "cuda:1"
@@ -49,7 +49,7 @@ config.hyperparameters = {
     "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
             "learning_rate": 0.0005,
-            "linear_hidden_units": [1200, 800],
+            "linear_hidden_units": [512, 256],
             "final_layer_activation": None,
             "batch_norm": False,
             "tau": 0.005,
@@ -58,7 +58,7 @@ config.hyperparameters = {
 
         "Critic": {
             "learning_rate": 0.001,
-            "linear_hidden_units": [800,500],
+            "linear_hidden_units": [256, 128],
             "final_layer_activation": None,
             "batch_norm": False,
             "buffer_size": 100000,
@@ -91,8 +91,8 @@ trials = 100
 action_type = []
 task_num = 32
 task_file = "../fraction/tasks.txt"
-config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
-config.environment.generate_offload_tasks(task_file, task_num, 10)
+# config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
+# config.environment.generate_offload_tasks(task_file, task_num, 10)
 with open(count_file,'w+') as f:
     f.write("")
 for iter in range(1):

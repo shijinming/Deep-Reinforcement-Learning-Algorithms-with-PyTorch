@@ -29,8 +29,8 @@ class VEC_Environment(gym.Env):
         self.snr_ref = 1 # reference SNR, which is used to compute rate by B*log2(1+snr_ref*d^-a) 
         self.snr_alpha = 2
         self.vehicle_F = range(5,11)  #GHz
-        self.data_size = [0.05, 0.1] #MBytes
-        self.comp_size = [0.2, 0.4] #GHz
+        self.data_size = [0.1, 0.2] #MBytes
+        self.comp_size = [0.5, 1] #GHz
         self.tau = [0.5, 1, 2, 4] #s
         self.max_datasize = max(self.data_size)
         self.max_compsize = max(self.comp_size)
@@ -44,7 +44,7 @@ class VEC_Environment(gym.Env):
         self.distance_factor = 1
         self.penalty = -np.log(1+self.max_tau)
 
-        self.action_space = spaces.Box(0,1,shape=(self.max_v+1,),dtype='float32')
+        self.action_space = spaces.Box(0,1,shape=(3,),dtype='float32')
         self.observation_space = spaces.Dict({
             "snr":spaces.Box(0,self.snr_ref,shape=(self.max_v,),dtype='float32'),
             "freq_remain":spaces.Box(0,6,shape=(self.max_v+1,),dtype='float32'),
@@ -72,7 +72,6 @@ class VEC_Environment(gym.Env):
 
     def reset(self):
         """Resets the environment and returns the start state"""
-        self.local_remain = self.local_total_freq
         self.move_vehicles()
         # self.add_vehicle()
         # self.generate_local_tasks()
@@ -85,6 +84,7 @@ class VEC_Environment(gym.Env):
             v["freq"] = v["freq_init"]
             v["freq_remain"] = max(0, v["freq_init"] - sum([i[1]/i[2] for i in v["tasks"]]))
             v["position"] = v["position_init"]
+        self.local_remain = self.local_total_freq
         with open(self.count_file,'a') as f:
             f.write(str(self.utility)+' '+' '.join([str(i) for i in self.count])+' '
             +' '.join([str(i) for i in self.delay])+'\n')
@@ -194,12 +194,12 @@ class VEC_Environment(gym.Env):
     def produce_action(self, action_type):
         if action_type=="random":
             v_id = np.random.choice(range(self.num_vehicles))
-            fraction = np.random.choice(range(self.price_level-1))
+            local_fraction = np.random.random()
+            serv_fraction = np.random.random()
         if action_type=="greedy":
             v_id = np.argmax(self.s["freq_remain"])
-            task = self.s["task"]
             fraction = np.argmax([self.compute_utility(v_id*self.price_level+i, task)[0] for i in range(1,self.price_level)])
-        action = v_id*self.price_level + fraction + 1
+        action = np.array([v_id, local_fraction, serv_fraction])
         return action
 
     def load_offloading_tasks(self, file, index):
@@ -223,12 +223,17 @@ class VEC_Environment(gym.Env):
         return service_availability
 
     def compute_utility(self, action, task):
-        v_id = np.argmax(action[1:self.num_vehicles+1])
+        action = (action+1)/2
+        if np.isnan(action[0]):
+            return self.penalty, 0, 0, 0
+        v_id = int(action[0]*self.num_vehicles)
+        if v_id==self.num_vehicles:
+            return self.penalty, 0, 0, 0
         v = self.vehicles[v_id]
         snr = self.s["snr"][v_id]
         time_remain = max(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 0.00001)
-        local_freq = (action[0]+1)/2*self.local_remain
-        serv_freq = (action[v_id+1]+1)/2*v["freq_remain"]
+        local_freq = action[1]*self.local_remain
+        serv_freq = action[2]*v["freq_remain"]
         t_local = task[1]/local_freq
         t_serv = task[0]/(self.bandwidth*np.log2(1+snr)) + task[1]/serv_freq
         fraction = t_local/(t_local + t_serv)
