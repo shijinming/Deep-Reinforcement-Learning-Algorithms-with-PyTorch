@@ -96,7 +96,7 @@ task_file = "../fraction/tasks.txt"
 with open(count_file,'w+') as f:
     f.write("")
 for iter in range(1):
-    for num_vehicles in [20]:
+    for num_vehicles in range(5,51,5):
         print("num_vehicles=",num_vehicles)
         config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
         config.environment.load_offloading_tasks(task_file, group)
