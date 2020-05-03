@@ -48,7 +48,7 @@ config.hyperparameters = {
     },
     "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
-            "learning_rate": 0.001,
+            "learning_rate": 0.0002,
             "linear_hidden_units": [256, 64],
             "final_layer_activation": None,
             "batch_norm": False,
@@ -96,7 +96,7 @@ task_file = "../fraction/tasks.txt"
 with open(count_file,'w+') as f:
     f.write("")
 for iter in range(1):
-    for num_vehicles in [30]:
+    for num_vehicles in [20]:
         print("num_vehicles=",num_vehicles)
         config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
         config.environment.load_offloading_tasks(task_file, group)
@@ -110,7 +110,7 @@ for iter in range(1):
             if i=="greedy":
                 num_episode = 5
             elif i=="random":
-                num_episode = 1000
+                num_episode = 5000
             for _ in range(num_episode):
                 config.environment.reset()
                 reward = 0
