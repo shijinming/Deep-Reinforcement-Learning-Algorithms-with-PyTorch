@@ -36,8 +36,8 @@ class VEC_Environment(gym.Env):
         self.max_compsize = max(self.comp_size)
         self.max_tau = max(self.tau)
         self.ref_price = 0.1
-        self.local_price = 0.05
-        self.serv_price = 0.1
+        self.local_price = 0.2
+        self.serv_price = 0.3
         self.price_level = 10
         self.service_threshold = 0.1
         self.local_priority = 0.01
