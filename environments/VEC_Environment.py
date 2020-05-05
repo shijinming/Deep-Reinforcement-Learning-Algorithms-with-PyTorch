@@ -65,8 +65,6 @@ class VEC_Environment(gym.Env):
         self.init_vehicles()
         # self.generate_offload_tasks()
         self.generate_local_tasks()
-        with open("../fraction/action.txt",'w+') as f:
-            f.write('')
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -104,8 +102,6 @@ class VEC_Environment(gym.Env):
     def step(self, action):
         self.step_count += 1
         self.reward = self.compute_reward(action)
-        with open("../fraction/action.txt",'a') as f:
-            f.write(' '.join([str(self.reward)]+[str(i) for i in action])+'\n')
         self.utility += self.reward
         self.move_vehicles()
         if self.step_count >= self.task_num_per_episode: 
@@ -129,7 +125,7 @@ class VEC_Environment(gym.Env):
         v = self.vehicles[v_id]
         v["freq"] -= serv_freq
         v["freq_remain"] = max(0, v["freq"] - sum([i[1]/i[2] for i in v["tasks"]]))
-        self.local_remain -= local_freq
+        self.local_remain = max(self.local_remain - local_freq, 0)
         return reward
 
     def init_vehicles(self):
@@ -185,7 +181,7 @@ class VEC_Environment(gym.Env):
                 f.write("tasks:\n")
                 tasks = []
                 for j in range(len(self.tau)):
-                    for _ in range(group):
+                    for _ in range(8):
                         max_t = self.tau[j]
                         data_size = random.uniform(self.data_size[0]*max_t*2,self.data_size[1]*max_t*2)
                         compute_size = random.uniform(self.comp_size[0]*max_t*2,self.comp_size[1]*max_t*2)
@@ -257,18 +253,17 @@ class VEC_Environment(gym.Env):
         v = self.vehicles[v_id]
         t_trans = task[0]/(self.bandwidth*np.log2(1+self.s["snr"][v_id]))
         result=[0,0,0]
-        max_u = -1000
-        step = 50
+        max_u = -1e9
+        step = 100
         if v["freq_remain"]<=0:
             return v_id, 0, 0
-        for j in range(1, step+1):
+        for j in range(step+1):
             serv_freq = j/step*v["freq_remain"]
+            serv_freq = 0.00001 if serv_freq==0 else serv_freq
             t_serv = t_trans + task[1]/serv_freq
-            for i in range(1, step+1):
+            for i in range(step+1):
                 local_freq = i/step*self.local_remain
-                if local_freq == 0:
-                    result[1]=0
-                    break
+                local_freq = 0.00001 if local_freq==0 else local_freq
                 t_local = task[1]/local_freq
                 fraction = t_local/(t_local + t_serv)
                 t_total = fraction*t_serv
@@ -281,6 +276,5 @@ class VEC_Environment(gym.Env):
                 if utility>max_u:
                     result = [utility, i, j]
                     max_u = utility
-        # print(str(result[1])+' '+str(result[2]), end=',')
         return v_id, result[1]/step, result[2]/step
 
