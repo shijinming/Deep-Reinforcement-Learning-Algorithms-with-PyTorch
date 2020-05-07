@@ -37,14 +37,14 @@ class VEC_Environment(gym.Env):
         self.max_tau = max(self.tau)
         self.ref_price = 0.1
         self.local_price = 0.2
-        self.serv_price = 0.3
+        self.serv_price = 0.25
         self.price_level = 10
         self.service_threshold = 0.1
         self.local_priority = 0.01
         self.distance_factor = 1
         self.penalty = -np.log(1+self.max_tau)
 
-        self.action_space = spaces.Box(0,1,shape=(3,),dtype='float32')
+        self.action_space = spaces.Box(-1,1,shape=(3,),dtype='float32')
         self.observation_space = spaces.Dict({
             "snr":spaces.Box(0,self.snr_ref,shape=(self.max_v,),dtype='float32'),
             "freq_remain":spaces.Box(0,6,shape=(self.max_v+1,),dtype='float32'),
@@ -197,6 +197,9 @@ class VEC_Environment(gym.Env):
             serv_fraction = np.random.random()
         if action_type=="greedy":
             v_id, local_fraction, serv_fraction = self.greedy_action()
+        # selection = [0]*self.num_vehicles
+        # selection[v_id] = 1
+        # action = np.array([local_fraction, serv_fraction] + selection)*2-1
         action = np.array([(v_id+0.5)/self.num_vehicles, local_fraction, serv_fraction])*2-1
         return action
 
@@ -227,6 +230,7 @@ class VEC_Environment(gym.Env):
         v_id = int(action[0]*self.num_vehicles)
         if v_id==self.num_vehicles:
             return self.penalty, 0, 0, 0
+        # v_id = np.argmax(action[2:])
         v = self.vehicles[v_id]
         snr = self.s["snr"][v_id]
         time_remain = max(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 0.00001)

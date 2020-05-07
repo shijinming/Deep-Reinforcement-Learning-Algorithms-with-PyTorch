@@ -14,7 +14,7 @@ import numpy as np
 config = Config()
 config.seed = 1
     
-config.num_episodes_to_run = 8000
+config.num_episodes_to_run = 20000
 # config.file_to_save_data_results = "results/data_and_graphs/VEC.pkl"
 # config.file_to_save_results_graph = "results/data_and_graphs/VEC.png"
 config.show_solution_score = False
@@ -49,7 +49,7 @@ config.hyperparameters = {
     "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
             "learning_rate": 0.0002,
-            "linear_hidden_units": [256, 64],
+            "linear_hidden_units": [256, 128],
             "final_layer_activation": None,
             "batch_norm": False,
             "tau": 0.005,
@@ -57,8 +57,8 @@ config.hyperparameters = {
         },
 
         "Critic": {
-            "learning_rate": 0.002,
-            "linear_hidden_units": [256, 64],
+            "learning_rate": 0.0002,
+            "linear_hidden_units": [256, 128],
             "final_layer_activation": None,
             "batch_norm": False,
             "buffer_size": 100000,
@@ -66,7 +66,7 @@ config.hyperparameters = {
             "gradient_clipping_norm": 5
         },
 
-        "min_steps_before_learning": 1000,
+        "min_steps_before_learning": 5000,
         "batch_size": 256,
         "discount_rate": 0.99,
         "mu": 0.0, #for O-H noise
@@ -96,7 +96,7 @@ task_file = "../fraction/tasks.txt"
 with open(count_file,'w+') as f:
     f.write("")
 for iter in range(1):
-    for num_vehicles in [40]:
+    for num_vehicles in [50]:
         print("num_vehicles=",num_vehicles)
         config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
         config.environment.load_offloading_tasks(task_file, group)
@@ -126,3 +126,4 @@ for iter in range(1):
         trainer = Trainer(config, AGENTS)
         trainer.run_games_for_agents()
         print(config.hyperparameters["Actor_Critic_Agents"])
+        print("num_vehicles=",num_vehicles)
