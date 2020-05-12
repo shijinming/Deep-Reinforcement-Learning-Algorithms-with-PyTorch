@@ -26,7 +26,7 @@ config.use_GPU = True
 config.overwrite_existing_results_file = True
 config.randomise_random_seed = True
 config.save_model = False
-config.device = "cuda:1"
+config.device = "cuda:0"
 
 config.hyperparameters = {
     "DQN_Agents": {
@@ -49,7 +49,7 @@ config.hyperparameters = {
     "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
             "learning_rate": 0.0002,
-            "linear_hidden_units": [256, 128],
+            "linear_hidden_units": [128, 128],
             "final_layer_activation": None,
             "batch_norm": False,
             "tau": 0.005,
@@ -58,7 +58,7 @@ config.hyperparameters = {
 
         "Critic": {
             "learning_rate": 0.0002,
-            "linear_hidden_units": [256, 128],
+            "linear_hidden_units": [128, 128],
             "final_layer_activation": None,
             "batch_norm": False,
             "buffer_size": 100000,
@@ -84,8 +84,8 @@ config.hyperparameters = {
     }
 }
 
-group = 5
-count_file = "../fraction/sac_tmp{}.txt".format(group)
+num_vehicles = 45
+groups = 4
 num_episode = 10
 trials = 100
 action_type = []
@@ -93,11 +93,12 @@ task_num = 32
 task_file = "../fraction/tasks.txt"
 # config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
 # config.environment.generate_change_tasks(task_file, 10)
+count_file = "../fraction/group_{}_vehicle_{}.txt".format(groups, num_vehicles//5)
 with open(count_file,'w+') as f:
     f.write("")
 for iter in range(1):
-    for num_vehicles in [50]:
-        print("num_vehicles=",num_vehicles)
+    for group in [groups]:
+        print("group=",group)
         config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
         config.environment.load_offloading_tasks(task_file, group)
         config.environment.count_file = count_file

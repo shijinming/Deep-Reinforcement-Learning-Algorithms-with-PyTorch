@@ -84,7 +84,7 @@ config.hyperparameters = {
     }
 }
 
-actionType = "greedy"
+actionType = "random"
 group = 5
 count_file = "../fraction/"+actionType+".txt"
 num_episode = 10
@@ -98,9 +98,9 @@ with open(count_file,'w+') as f:
     f.write("")
 for iter in range(100):
     for num_vehicles in range(5,51,5):
-        print("num_vehicles=",num_vehicles)
+        print("iter=",iter,"num_vehicles=",num_vehicles)
         config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
-        config.environment.load_offloading_tasks(task_file, iter%10+1)
+        config.environment.load_offloading_tasks(task_file, iter%5+1)
         config.environment.count_file = count_file
         with open(count_file,'a') as f:
             f.write("num_vehicles="+str(num_vehicles)+'\n')
