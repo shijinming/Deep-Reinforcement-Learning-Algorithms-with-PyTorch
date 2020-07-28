@@ -281,35 +281,34 @@ class VEC_Environment(gym.Env):
                 utility = self.high_priority_factor - cost
         return utility, v_id, freq_alloc
 
-with open("../greedy.txt",'w+') as f:
-    f.write("")
-with open("../random.txt",'w+') as f:
-    f.write("")
-
+actionType = "random"
+group = 5
+count_file = "../sac/"+actionType+"_1.txt"
 num_episode = 10
 trials = 100
-action_type = ["random","greedy"]
+action_type = [actionType]
 task_num = 32
-task_file = "../tasks.txt"
-# environment = VEC_Environment(num_vehicles=30, task_num=task_num)
-# environment.generate_offload_tasks(task_file, task_num, 100)
-for iter in range(100):
-    print("iter =",iter)
+task_file = "../sac/tasks.txt"
+# config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
+# config.environment.generate_change_tasks(task_file, 10)
+with open(count_file,'w+') as f:
+    f.write("")
+for iter in range(200):
     for num_vehicles in range(5,51,5):
+        print("iter=",iter,"num_vehicles=",num_vehicles)
         environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
         environment.load_offloading_tasks(task_file, iter%5+1)
+        environment.count_file = count_file
+        with open(count_file,'a') as f:
+            f.write("num_vehicles="+str(num_vehicles)+'\n')
         for i in action_type:
             print(i)
             results = []
             rollings = []
             if i=="greedy":
-                num_episode = 5
-                environment.count_file = "../greedy.txt"
+                num_episode = 2
             elif i=="random":
                 num_episode = 2000
-                environment.count_file = "../random.txt"
-            with open(environment.count_file,'a') as f:
-                f.write('num_vehicles='+str(num_vehicles)+'\n')
             for _ in range(num_episode):
                 environment.reset()
                 reward = 0
