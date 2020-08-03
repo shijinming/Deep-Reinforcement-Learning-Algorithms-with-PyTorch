@@ -281,9 +281,9 @@ class VEC_Environment(gym.Env):
                 utility = self.high_priority_factor - cost
         return utility, v_id, freq_alloc
 
-actionType = "random"
+actionType = "greedy"
 group = 5
-count_file = "../sac/"+actionType+"_1.txt"
+count_file = "../sac/"+actionType+".txt"
 num_episode = 10
 trials = 100
 action_type = [actionType]
@@ -293,7 +293,7 @@ task_file = "../sac/tasks.txt"
 # config.environment.generate_change_tasks(task_file, 10)
 with open(count_file,'w+') as f:
     f.write("")
-for iter in range(200):
+for iter in range(1000):
     for num_vehicles in range(5,51,5):
         print("iter=",iter,"num_vehicles=",num_vehicles)
         environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)

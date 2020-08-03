@@ -14,7 +14,7 @@ import numpy as np
 config = Config()
 config.seed = 1
     
-config.num_episodes_to_run = 5000
+config.num_episodes_to_run = 8000
 # config.file_to_save_data_results = "results/data_and_graphs/VEC.pkl"
 # config.file_to_save_results_graph = "results/data_and_graphs/VEC.png"
 config.show_solution_score = False
@@ -26,7 +26,7 @@ config.use_GPU = True
 config.overwrite_existing_results_file = False
 config.randomise_random_seed = True
 config.save_model = False
-config.device = "cuda:0"
+config.device = "cuda:1"
 
 config.hyperparameters = {
     "DQN_Agents": {
@@ -37,7 +37,7 @@ config.hyperparameters = {
         "discount_rate": 0.99,
         "incremental_td_error": 1e-8,
         "update_every_n_steps": 1,
-        "linear_hidden_units": [800, 500],
+        "linear_hidden_units": [1000,800],
         "final_layer_activation": None,
         "batch_norm": False,
         "gradient_clipping_norm": 5,
@@ -48,8 +48,8 @@ config.hyperparameters = {
     },
     "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
-            "learning_rate": 0.0005,
-            "linear_hidden_units": [1200, 800],
+            "learning_rate": 0.0008,
+            "linear_hidden_units": [1200, 1200],
             "final_layer_activation": "Softmax",
             "batch_norm": False,
             "tau": 0.005,
@@ -57,8 +57,8 @@ config.hyperparameters = {
         },
 
         "Critic": {
-            "learning_rate": 0.001,
-            "linear_hidden_units": [800,500],
+            "learning_rate": 0.0008,
+            "linear_hidden_units": [1200,1200],
             "final_layer_activation": None,
             "batch_norm": False,
             "buffer_size": 100000,
@@ -84,22 +84,22 @@ config.hyperparameters = {
     }
 }
 
-num_vehicles = 40
-count_file = "../sac/ddqn_vehicle_{}.txt".format(num_vehicles//5)
+task_num = 64
+count_file = "../sac/sac_re_change{}.txt".format(task_num//8)
+num_vehicles = 30
 num_episode = 10
 trials = 100
 action_type = ["random","greedy"]
-task_num = 32
-task_file = "../sac/tasks.txt"
+task_file = "../sac/change_tasks1.txt"
 # config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
 # config.environment.generate_change_tasks("../change_tasks.txt", 8)
 with open(count_file,'w+') as f:
     f.write("")
 for iter in range(1):
-    for group in range(1,6):
+    for group in range(10):
         print("num_vehicles=",num_vehicles)
         config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
-        config.environment.load_offloading_tasks(task_file, group)
+        config.environment.load_offloading_tasks(task_file, task_num//8+group*8)
         config.environment.count_file = count_file
         # for i in action_type:
         #     print(i)
@@ -122,6 +122,6 @@ for iter in range(1):
         #     print("mean_reward=", np.mean(results),"max_reward=",max(results))
         with open(count_file,'a') as f:
             f.write("num_vehicles="+str(num_vehicles)+'\n')
-        AGENTS = [DDQN] 
+        AGENTS = [SAC_Discrete] 
         trainer = Trainer(config, AGENTS)
         trainer.run_games_for_agents()

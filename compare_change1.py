@@ -298,7 +298,7 @@ class VEC_Environment(gym.Env):
                 utility = self.high_priority_factor - cost
         return utility, v_id, freq_alloc
 
-actionType = "random"
+actionType = "greedy"
 count_file = "../sac/"+actionType+"_change.txt"
 num_episode = 10
 trials = 100
@@ -309,7 +309,7 @@ task_file = "../sac/change_tasks1.txt"
 # environment.generate_change_tasks(task_file, 10)
 with open(count_file,'w+') as f:
     f.write("")
-for iter in range(200):
+for iter in range(1000):
     print("iter =",iter)
     for task_num in range(8,65,8):
         print("iter=",iter,"num_task=",task_num)

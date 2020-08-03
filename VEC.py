@@ -26,7 +26,7 @@ config.use_GPU = True
 config.overwrite_existing_results_file = False
 config.randomise_random_seed = True
 config.save_model = False
-config.device = "cuda:0"
+config.device = "cuda:1"
 
 config.hyperparameters = {
     "DQN_Agents": {
@@ -37,7 +37,7 @@ config.hyperparameters = {
         "discount_rate": 0.99,
         "incremental_td_error": 1e-8,
         "update_every_n_steps": 1,
-        "linear_hidden_units": [800, 500],
+        "linear_hidden_units": [800, 600],
         "final_layer_activation": None,
         "batch_norm": False,
         "gradient_clipping_norm": 5,
@@ -84,8 +84,8 @@ config.hyperparameters = {
     }
 }
 
-num_vehicles = 40
-count_file = "../sac/ddqn_vehicle_{}.txt".format(num_vehicles//5)
+num_vehicles = 35
+count_file = "../sac/ddqn1_vehicle_{}.txt".format(num_vehicles//5)
 num_episode = 10
 trials = 100
 action_type = ["random","greedy"]
@@ -96,7 +96,7 @@ task_file = "../sac/tasks.txt"
 with open(count_file,'w+') as f:
     f.write("")
 for iter in range(1):
-    for group in range(1,6):
+    for group in range(1,11):
         print("num_vehicles=",num_vehicles)
         config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
         config.environment.load_offloading_tasks(task_file, group)
