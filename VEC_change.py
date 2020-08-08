@@ -37,7 +37,7 @@ config.hyperparameters = {
         "discount_rate": 0.99,
         "incremental_td_error": 1e-8,
         "update_every_n_steps": 1,
-        "linear_hidden_units": [1000,800],
+        "linear_hidden_units": [800,600],
         "final_layer_activation": None,
         "batch_norm": False,
         "gradient_clipping_norm": 5,
@@ -84,8 +84,9 @@ config.hyperparameters = {
     }
 }
 
-task_num = 64
-count_file = "../sac/sac_re_change{}.txt".format(task_num//8)
+order=9
+task_num = 16
+count_file = "../sac_re_change_{}.txt".format(order+1)
 num_vehicles = 30
 num_episode = 10
 trials = 100
@@ -96,7 +97,7 @@ task_file = "../sac/change_tasks1.txt"
 with open(count_file,'w+') as f:
     f.write("")
 for iter in range(1):
-    for group in range(10):
+    for group in [order]:
         print("num_vehicles=",num_vehicles)
         config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
         config.environment.load_offloading_tasks(task_file, task_num//8+group*8)
