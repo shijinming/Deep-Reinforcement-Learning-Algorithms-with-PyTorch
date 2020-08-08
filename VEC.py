@@ -5,7 +5,7 @@ from agents.actor_critic_agents.SAC_Discrete import SAC_Discrete
 from agents.actor_critic_agents.A3C import A3C 
 from agents.DQN_agents.DDQN import DDQN
 from agents.DQN_agents.Dueling_DDQN import Dueling_DDQN
-from environments.VEC_Environment import VEC_Environment
+from environments.Blockchain_Environment import Blockchain_Environment
 from agents.Trainer import Trainer
 from utilities.data_structures.Config import Config
 import matplotlib.pyplot as plt
@@ -98,7 +98,7 @@ with open(count_file,'w+') as f:
 for iter in range(1):
     for group in range(1,11):
         print("num_vehicles=",num_vehicles)
-        config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
+        config.environment = Blockchain_Environment(num_vehicles=num_vehicles, task_num=task_num)
         config.environment.load_offloading_tasks(task_file, group)
         config.environment.count_file = count_file
         # for i in action_type:
