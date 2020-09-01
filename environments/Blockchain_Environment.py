@@ -27,7 +27,7 @@ class Blockchain_Environment(gym.Env):
         self.snr_ref = 1 # reference SNR, which is used to compute rate by B*log2(1+snr_ref*d^-a) 
         self.snr_alpha = 2
         self.vehicle_F = range(5,11)  #GHz
-        self.data_size = [0.05, 0.1] #MBytes
+        self.data_size = [0.1, 0.2] #MBytes
         self.comp_size = [0.2, 0.4] #GHz
         self.tau = [0.5, 1, 2, 4] #s
         self.max_datasize = max(self.data_size)
@@ -47,11 +47,10 @@ class Blockchain_Environment(gym.Env):
             "freq_remain":spaces.Box(0,max(self.vehicle_F),shape=(self.max_v,),dtype='float32'),
             "task":spaces.Box(0,max(self.max_datasize,self.max_compsize,self.max_tau),shape=(3,),dtype='float32')})
         self.seed()
-        self.reward_threshold = 0.0
         self.trials = 100
         self.max_episode_steps = 100
         self._max_episode_steps = 100
-        self.id = "VEC"
+        self.id = "Offloading"
         self.count = [0,0,0,0]
         self.delay = [0,0,0,0]
         self.count_file = "blockchain.txt"
@@ -134,7 +133,7 @@ class Blockchain_Environment(gym.Env):
             v_p = random.uniform(-self.maxR*0.9,self.maxR*0.9)
             v_v = np.random.normal(0, self.maxV/2)
             v_v = v_v if v_v!=0 else random.choice([-0.1, 0.1])
-            self.vehicles.append({"id":self.vehicle_count, "position":v_p, "position_init":v_p, "velocity":v_v, "freq_init":v_f, "freq":v_f, "freq_remain":0, "tasks":[], "u_max":0})
+            self.vehicles.append({"id":self.vehicle_count, "position":v_p, "position_init":v_p, "velocity":v_v, "freq_init":v_f, "freq":v_f, "freq_remain":0, "tasks":[]})
 
     def add_vehicle(self):
         if len(self.vehicles) <= self.num_vehicles:
@@ -143,7 +142,7 @@ class Blockchain_Environment(gym.Env):
             v_v = np.random.normal(0,self.maxV/2)
             v_v = v_v if v_v!=0 else random.choice([-0.1, 0.1])
             v_p = -self.maxR if v_v>0 else self.maxR
-            self.vehicles.append({"id":self.vehicle_count, "position":v_p, "position_init":v_p, "velocity":v_v, "freq_init":v_f, "freq":v_f, "freq_remain":0, "tasks":[], "u_max":0})
+            self.vehicles.append({"id":self.vehicle_count, "position":v_p, "position_init":v_p, "velocity":v_v, "freq_init":v_f, "freq":v_f, "freq_remain":0, "tasks":[]})
 
     def move_vehicles(self):
         for i in range(len(self.vehicles)):
@@ -160,7 +159,7 @@ class Blockchain_Environment(gym.Env):
                     max_t = random.choice(self.tau)
                     data_size = random.uniform(self.data_size[0]*max_t*2,self.data_size[1]*max_t*2)
                     compute_size = random.uniform(self.comp_size[0]*max_t*2,self.comp_size[1]*max_t*2)
-                    task = [str(data_size), str(compute_size), str(max_t), str(priority)]
+                    task = [str(data_size), str(compute_size), str(max_t)]
                     f.write(' '.join(task)+'\n')
 
     def produce_action(self, action_type):
@@ -226,18 +225,9 @@ class Consensus_Environment(gym.Env):
     def __init__(self, num_nodes=20):
         self.num_BS = 50
         self.BS_count = 0
-        self.bandwidth = 6 # MHz
-        self.snr_ref = 1 # reference SNR, which is used to compute rate by B*log2(1+snr_ref*d^-a) 
-        self.snr_alpha = 2
-        self.BS_F = range(5,11)  #GHz
-        self.data_size = [0.05, 0.1] #MBytes
-        self.comp_size = [0.2, 0.4] #GHz
-        self.tau = [0.5, 1, 2, 4] #s
-        self.max_datasize = max(self.data_size)
-        self.max_compsize = max(self.comp_size)
-        self.max_tau = max(self.tau)
-        self.priority = [0.5, 1]
-        self.ref_price = 0.1
+        self.rate = 12.5 # MB/s
+        self.BS_F = range(20,30)  #GHz
+        self.rho = 0.3
 
         self.action_space = spaces.Box(-1,1,shape=(self.num_BS+1,), dtype='float32')
         self.observation_space = spaces.Dict({
@@ -245,11 +235,10 @@ class Consensus_Environment(gym.Env):
             "reliability":spaces.Box(0,1,shape=(self.num_BS,),dtype='float32'),
             "trans_num":spaces.Box(0,1,dtype='float32')})
         self.seed()
-        self.reward_threshold = 0.0
         self.trials = 100
         self.max_episode_steps = 100
         self._max_episode_steps = 100
-        self.id = "VEC"
+        self.id = "Consensus"
         self.consensus_delay = 0
         self.count_file = "consensus.txt"
         self.utility = 0
@@ -262,16 +251,12 @@ class Consensus_Environment(gym.Env):
 
     def reset(self):
         """Resets the environment and returns the start state"""
-        # for _ in range(random.randint(1,10)):
-        #     self.add_vehicle()
-        self.move_vehicles()
-        # self.add_vehicle()
-        # self.generate_offload_tasks()
+        self.change_nodes()
         self.step_count = 0
         self.next_state = None
         self.reward = None
         self.done = False
-        for v in self.vehicles:
+        for b in self.nodes:
             v["freq"] = v["freq_init"]
             v["freq_remain"] = max(0, v["freq_init"] - sum([i[1]/i[2] for i in v["tasks"]]))
             v["position"] = v["position_init"]
@@ -330,14 +315,16 @@ class Consensus_Environment(gym.Env):
         return reward
 
     def init_nodes(self):
-        for _ in range(self.num_vehicles):
-            self.vehicle_count += 1
-            v_f = random.choice(self.vehicle_F)
-            v_p = random.uniform(-self.maxR*0.9,self.maxR*0.9)
-            v_v = np.random.normal(0, self.maxV/2)
-            v_v = v_v if v_v!=0 else random.choice([-0.1, 0.1])
-            self.vehicles.append({"id":self.vehicle_count, "position":v_p, "position_init":v_p, "velocity":v_v, "freq_init":v_f, "freq":v_f, "freq_remain":0, "tasks":[], "u_max":0})
+        for _ in range(self.num_BS):
+            self.BS_count += 1
+            freq = random.choice(self.BS_F)
+            r = random.choice(range(51)/50)
+            self.nodes.append({"id":self.BS_count, "position":v_p, "freq_init":freq, "freq_remain":freq, "reliability":r})
 
+    def change_nodes(self):
+        for b in range(self.num_BS):
+            self.nodes[b]["freq_remain"]=self.nodes[b]["freq_init"]-self.rho*np.random.poisson(30)
+            
 
     def produce_action(self, action_type):
         if action_type=="random":
