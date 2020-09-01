@@ -235,14 +235,20 @@ class Blockchain_Environment(gym.Env):
 class Consensus_Environment(gym.Env):
     environment_name = "Consensus in blockchain"
 
-    def __init__(self, num_nodes=20):
+    def __init__(self, num_cons_nodes=20):
         self.num_BS = 50
+        self.num_cons_nodes = num_cons_nodes
         self.BS_count = 0
         self.rate = 12.5 # MB/s
         self.BS_F = range(20,30)  #GHz
         self.rho = 0.3
         self.trans_num = 0
+        self.trans_size = 1
         self.trans_factor = 0.5
+        self.sig_gen = 1
+        self.sig_ver = 1
+        self.macs = 1
+
         self.action_space = spaces.Box(-1,1,shape=(self.num_BS+1,), dtype='float32')
         self.observation_space = spaces.Dict({
             "freq_remain":spaces.Box(0,max(self.BS_F),shape=(self.num_BS,),dtype='float32'),
@@ -315,7 +321,6 @@ class Consensus_Environment(gym.Env):
             self.trans_num+=num_vehicles
         self.trans_num=self.trans_num*self.trans_factor
             
-
     def produce_action(self, action_type):
         if action_type=="random":
             action = 0
@@ -325,4 +330,14 @@ class Consensus_Environment(gym.Env):
 
     def compute_utility(self, action):
         utility = 0
+        consensus_nodes = np.argsort(action[-self.num_cons_nodes:])
+        replicas = consensus_nodes[:-1]
+        primary = consensus_nodes[-1]
+        block_size = action[-1]*self.trans_num
+        T_d = 5*self.trans_num*self.trans_size/self.rate
+        T_v = 
         return utility
+
+    def compute_delay(self, b):
+        delay = 0
+        return delay
