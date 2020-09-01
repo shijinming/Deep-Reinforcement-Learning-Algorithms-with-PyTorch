@@ -22,7 +22,6 @@ class Blockchain_Environment(gym.Env):
         self.maxR = 500 #m, max relative distance between request vehicle and other vehicles
         self.maxV = 30 #km/h, max relative velocity between requst vehicle and other vehicles
         self.max_v = 50 # maximum vehicles in the communication range of request vehicle
-        self.max_local_task = 10
         self.bandwidth = 10 # MHz
         self.snr_ref = 1 # reference SNR, which is used to compute rate by B*log2(1+snr_ref*d^-a) 
         self.snr_alpha = 2
@@ -45,6 +44,7 @@ class Blockchain_Environment(gym.Env):
             "snr":spaces.Box(0,self.snr_ref,shape=(self.max_v,),dtype='float32'),
             "time_remain":spaces.Box(0,100,shape=(self.max_v,),dtype='float32'),
             "freq_remain":spaces.Box(0,max(self.vehicle_F),shape=(self.max_v,),dtype='float32'),
+            "reliability":spaces.Box(0,1,shape=(self.max_v,),dtype='float32'),
             "task":spaces.Box(0,max(self.max_datasize,self.max_compsize,self.max_tau),shape=(3,),dtype='float32')})
         self.seed()
         self.trials = 100
@@ -228,7 +228,8 @@ class Consensus_Environment(gym.Env):
         self.rate = 12.5 # MB/s
         self.BS_F = range(20,30)  #GHz
         self.rho = 0.3
-
+        self.trans_num = 0
+        self.trans_factor = 0.5
         self.action_space = spaces.Box(-1,1,shape=(self.num_BS+1,), dtype='float32')
         self.observation_space = spaces.Dict({
             "freq_remain":spaces.Box(0,max(self.BS_F),shape=(self.num_BS,),dtype='float32'),
@@ -256,62 +257,33 @@ class Consensus_Environment(gym.Env):
         self.next_state = None
         self.reward = None
         self.done = False
-        for b in self.nodes:
-            v["freq"] = v["freq_init"]
-            v["freq_remain"] = max(0, v["freq_init"] - sum([i[1]/i[2] for i in v["tasks"]]))
-            v["position"] = v["position_init"]
-            alpha_max = v["freq_remain"]/v["freq"]
-            v["u_max"] = sum([np.log(1+alpha_max*i[2]) for i in v["tasks"]])
         with open(self.count_file,'a') as f:
-            f.write(str(self.utility)+' '+' '.join([str(i) for i in self.low_count])+' '
-            +' '.join([str(i) for i in self.low_delay])+' '
-            +' '.join([str(i) for i in self.high_count])+' '
-            +' '.join([str(i) for i in self.high_delay])+' '+'\n')
-        self.high_count = [0,0,0,0]
-        self.high_delay = [0,0,0,0]
-        self.low_count = [0,0,0,0]
-        self.low_delay = [0,0,0,0]
+            f.write(str(self.utility)+' '+self.consensus_delay+' '+'\n')
         self.utility = 0
-        task = self.tasks[0]
         self.s = {
-            "snr":np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
-            # "time_remain":np.array([min(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 100) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
-            "freq_remain":np.array([v["freq_remain"] for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
-            "u_max":np.array([v["u_max"] for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
-            "serv_prob":np.array([self.compute_service_availability(task, v) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
-            "task":np.array(task)}
+            "freq_remain":np.array([b["freq_remain"] for b in self.nodes]),
+            "reliability":np.array([b["reliability"] for b in self.nodes]),
+            "trans_num":np.array(self.trans_num)}
         return spaces.flatten(self.observation_space, self.s)
 
     def step(self, action):
         self.step_count += 1
         self.reward = self.compute_reward(action)
         self.utility += self.reward
-        self.move_vehicles()
+        self.change_nodes()
         if self.step_count >= self.task_num_per_episode: 
             self.done = True
         else: 
             self.done = False
-            self.s["snr"] = np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
-            self.s["freq_remain"] = np.array([v["freq_remain"] for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
-            self.s["u_max"] = np.array([v["u_max"] for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
-            # self.s["time_remain"] = np.array([min(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 100) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
-            task = self.tasks[self.step_count]
-            self.s["serv_prob"]= np.array([self.compute_service_availability(task, v) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
-            self.s["task"] = np.array(task)
+            self.s["freq_remain"] = np.array([b["freq_remain"] for b in self.nodes])
+            self.s["reliability"] = np.array([b["reliability"] for b in self.nodes])
+            self.s["trans_num"] = self.trans_num
         return spaces.flatten(self.observation_space, self.s), self.reward, self.done, {}
 
     def compute_reward(self, action):
         """Computes the reward we would have got with this achieved goal and desired goal. Must be of this exact
         interface to fit with the open AI gym specifications"""
-        task = self.s["task"]
-        reward, v_id, freq_alloc = self.compute_utility(action, task)
-        if v_id==self.num_vehicles:
-            return reward
-        v = self.vehicles[v_id]
-        v["freq"] -= freq_alloc
-        v["freq_remain"] = max(0, v["freq"] - sum([i[1]/i[2] for i in v["tasks"]]))
-        alpha_max = v["freq_remain"]/v["freq"]
-        v["u_max"] = sum([np.log(1+alpha_max*i[2]) for i in v["tasks"]])
+        reward = self.compute_utility(action)
         return reward
 
     def init_nodes(self):
@@ -319,22 +291,22 @@ class Consensus_Environment(gym.Env):
             self.BS_count += 1
             freq = random.choice(self.BS_F)
             r = random.choice(range(51)/50)
-            self.nodes.append({"id":self.BS_count, "position":v_p, "freq_init":freq, "freq_remain":freq, "reliability":r})
+            self.nodes.append({"id":self.BS_count, "freq_init":freq, "freq_remain":freq, "reliability":r})
 
     def change_nodes(self):
+        self.trans_num
         for b in range(self.num_BS):
-            self.nodes[b]["freq_remain"]=self.nodes[b]["freq_init"]-self.rho*np.random.poisson(30)
+            num_vehicles = np.random.poisson(30)
+            self.nodes[b]["freq_remain"]=self.nodes[b]["freq_init"]-self.rho*num_vehicles
+            self.trans_num+=num_vehicles
+        self.trans_num=self.trans_num*self.trans_factor
             
 
     def produce_action(self, action_type):
         if action_type=="random":
-            v_id = np.random.choice(range(self.num_vehicles))
-            fraction = np.random.choice(range(self.price_level-1))
+            action = 0
         if action_type=="greedy":
-            v_id = np.argmax(self.s["freq_remain"])
-            task = self.s["task"]
-            fraction = np.argmax([self.compute_utility(v_id*self.price_level+i, task)[0] for i in range(1,self.price_level)])
-        action = v_id*self.price_level + fraction + 1
+            action = 0
         return action
 
     def compute_utility(self, action):
