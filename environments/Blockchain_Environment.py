@@ -335,7 +335,10 @@ class Consensus_Environment(gym.Env):
         primary = consensus_nodes[-1]
         block_size = action[-1]*self.trans_num
         T_d = 5*self.trans_num*self.trans_size/self.rate
-        T_v = 
+        primary_t = 0
+        replica_t = 0
+        T_v = max(primary_t, replica_t)
+        utility = utility / (T_v + T_d)
         return utility
 
     def compute_delay(self, b):
