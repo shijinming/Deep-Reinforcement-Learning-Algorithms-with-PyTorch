@@ -37,7 +37,7 @@ class Blockchain_Environment(gym.Env):
         self.price_level = 10
         self.kappa = 0.1
         self.distance_factor = 1
-        self.penalty = -np.log(1+self.max_tau)
+        self.penalty = -2*np.log(1+self.max_tau)
 
         self.action_space = spaces.Discrete(self.num_vehicles*self.price_level)
         self.observation_space = spaces.Dict({
@@ -79,8 +79,6 @@ class Blockchain_Environment(gym.Env):
             v["freq"] = v["freq_init"]
             v["freq_remain"] = max(0, v["freq_init"] - sum([i[1]/i[2] for i in v["tasks"]]))
             v["position"] = v["position_init"]
-            alpha_max = v["freq_remain"]/v["freq"]
-            v["u_max"] = sum([np.log(1+alpha_max*i[2]) for i in v["tasks"]])
         with open(self.count_file,'a') as f:
             f.write(str(self.utility)+' '+' '.join([str(i) for i in self.count])+' '
             +' '.join([str(i) for i in self.delay])+' '+'\n')
@@ -92,7 +90,7 @@ class Blockchain_Environment(gym.Env):
             "snr":np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
             "time_remain":np.array([min(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 100) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
             "freq_remain":np.array([v["freq_remain"] for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
-            "reliability":np.array([v["u_max"] for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
+            "reliability":np.array([self.compute_reliability(v) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
             "task":np.array(task)}
         return spaces.flatten(self.observation_space, self.s)
 
@@ -108,6 +106,7 @@ class Blockchain_Environment(gym.Env):
             self.s["snr"] = np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
             self.s["freq_remain"] = np.array([v["freq_remain"] for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
             self.s["time_remain"] = np.array([min(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 100) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
+            self.s["reliability"] = np.array([self.compute_reliability(v) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
             task = self.tasks[self.step_count]
             self.s["task"] = np.array(task)
         return spaces.flatten(self.observation_space, self.s), self.reward, self.done, {}
@@ -116,14 +115,16 @@ class Blockchain_Environment(gym.Env):
         """Computes the reward we would have got with this achieved goal and desired goal. Must be of this exact
         interface to fit with the open AI gym specifications"""
         task = self.s["task"]
-        reward, v_id, freq_alloc = self.compute_utility(action, task)
+        reward, utility_n, is_finish, v_id, freq_alloc = self.compute_utility(action, task)
         if v_id==self.num_vehicles:
             return reward
         v = self.vehicles[v_id]
-        v["freq"] -= freq_alloc
-        v["freq_remain"] = max(0, v["freq"] - sum([i[1]/i[2] for i in v["tasks"]]))
-        alpha_max = v["freq_remain"]/v["freq"]
-        v["u_max"] = sum([np.log(1+alpha_max*i[2]) for i in v["tasks"]])
+        v["freq_remain"] -= freq_alloc
+        v["task_num"]+=1
+        v["finish_task"].pop(0)
+        v["finish_task"].append(is_finish)
+        v["utility"].pop(0)
+        v["utility"].append(utility_n)
         return reward
 
     def init_vehicles(self):
@@ -133,7 +134,8 @@ class Blockchain_Environment(gym.Env):
             v_p = random.uniform(-self.maxR*0.9,self.maxR*0.9)
             v_v = np.random.normal(0, self.maxV/2)
             v_v = v_v if v_v!=0 else random.choice([-0.1, 0.1])
-            self.vehicles.append({"id":self.vehicle_count, "position":v_p, "position_init":v_p, "velocity":v_v, "freq_init":v_f, "freq":v_f, "freq_remain":0, "tasks":[]})
+            self.vehicles.append({"id":self.vehicle_count, "position":v_p, "position_init":v_p, "velocity":v_v, 
+            "freq_init":v_f, "freq_remain":v_f, "task_num":0, "finish_task":[0]*100, "utility":[0]*100})
 
     def add_vehicle(self):
         if len(self.vehicles) <= self.num_vehicles:
@@ -142,7 +144,8 @@ class Blockchain_Environment(gym.Env):
             v_v = np.random.normal(0,self.maxV/2)
             v_v = v_v if v_v!=0 else random.choice([-0.1, 0.1])
             v_p = -self.maxR if v_v>0 else self.maxR
-            self.vehicles.append({"id":self.vehicle_count, "position":v_p, "position_init":v_p, "velocity":v_v, "freq_init":v_f, "freq":v_f, "freq_remain":0, "tasks":[]})
+            self.vehicles.append({"id":self.vehicle_count, "position":v_p, "position_init":v_p, "velocity":v_v, 
+            "freq_init":v_f, "freq_remain":v_f, "task_num":0, "finish_task":[0]*100, "utility":[0]*100})
 
     def move_vehicles(self):
         for i in range(len(self.vehicles)):
@@ -155,12 +158,15 @@ class Blockchain_Environment(gym.Env):
         with open(file,'w+') as f:
             for _ in range(group_num):
                 f.write("tasks:\n")
-                for _ in range(task_num):
-                    max_t = random.choice(self.tau)
-                    data_size = random.uniform(self.data_size[0]*max_t*2,self.data_size[1]*max_t*2)
-                    compute_size = random.uniform(self.comp_size[0]*max_t*2,self.comp_size[1]*max_t*2)
-                    task = [str(data_size), str(compute_size), str(max_t)]
-                    f.write(' '.join(task)+'\n')
+                tasks = []
+                for j in range(len(self.tau)):
+                    for _ in range(4):
+                        max_t = self.tau[j]
+                        data_size = random.uniform(self.data_size[0]*max_t*2,self.data_size[1]*max_t*2)
+                        compute_size = random.uniform(self.comp_size[0]*max_t*2,self.comp_size[1]*max_t*2)
+                        tasks.append(str(data_size)+' '+str(compute_size)+' '+str(max_t))
+                np.random.shuffle(tasks)
+                f.write('\n'.join(tasks)+'\n')
 
     def produce_action(self, action_type):
         if action_type=="random":
@@ -194,29 +200,36 @@ class Blockchain_Environment(gym.Env):
         return alloc
 
     def compute_utility(self, action, task):
+        is_finish = 0
+        utility_n = 0
         v_id = action//self.price_level
         if v_id==self.num_vehicles:
             return 0, v_id, 0
         utility = -np.log(1+self.max_tau)
         v = self.vehicles[v_id]
         rate = self.bandwidth*np.log2(1+self.s["snr"][v_id])
+        price = (action%self.price_level+1)/self.price_level*np.log(1+task[2])/task[1]
         freq_alloc = self.get_resouce_allocation(v, price, task, rate)
-        cost = self.kappa*freq_alloc*freq_alloc*task[1]
-        # fraction = (action%self.price_level)/self.price_level
-        # freq_alloc = fraction*v["freq_remain"]
         if freq_alloc <= 0:
             return utility, v_id, 0
         t_total = task[0]/rate + task[1]/freq_alloc
         time_remain = max(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 0.00001)
-        # cost = self.ref_price*task[1]
         if t_total <=min(task[2], time_remain):
-            utility = np.log(1+task[2]-t_total) - cost
+            utility = np.log(1+task[2]-t_total) - price*task[1]
             self.count[int(np.log2(task[2]))+1] += 1
             self.delay[int(np.log2(task[2]))+1] += t_total
+            v["finish_task"]+=1
+            is_finish = 1
+            utility_n = np.log(1+task[2]-t_total)/np.log(1+task[2])
         else:
-            utility = self.penalty - cost
-        return utility, v_id, freq_alloc
+            utility = self.penalty
+        return utility, utility_n, is_finish, v_id, freq_alloc
 
+    def compute_reliability(self, v):
+        num = min(100,v["task_num"])
+        average_u = sum([v["utility"][-num]])/sum(v["finish_task"][-num:])
+        average_r = sum(v["finish_task"][-num:])/num
+        return (average_u + average_r)/2
 
 
 class Consensus_Environment(gym.Env):
@@ -239,6 +252,7 @@ class Consensus_Environment(gym.Env):
         self.trials = 100
         self.max_episode_steps = 100
         self._max_episode_steps = 100
+        self.task_num_per_episode = 30
         self.id = "Consensus"
         self.consensus_delay = 0
         self.count_file = "consensus.txt"
