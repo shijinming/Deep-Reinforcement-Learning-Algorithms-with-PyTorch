@@ -5,7 +5,7 @@ from agents.actor_critic_agents.SAC_Discrete import SAC_Discrete
 from agents.actor_critic_agents.A3C import A3C 
 from agents.DQN_agents.DDQN import DDQN
 from agents.DQN_agents.Dueling_DDQN import Dueling_DDQN
-from environments.Blockchain_Environment import Blockchain_Environment
+from environments.Blockchain_Environment import Consensus_Environment
 from agents.Trainer import Trainer
 from utilities.data_structures.Config import Config
 import matplotlib.pyplot as plt
@@ -14,7 +14,7 @@ import numpy as np
 config = Config()
 config.seed = 1
     
-config.num_episodes_to_run = 5000
+config.num_episodes_to_run = 8000
 # config.file_to_save_data_results = "results/data_and_graphs/VEC.pkl"
 # config.file_to_save_results_graph = "results/data_and_graphs/VEC.png"
 config.show_solution_score = False
@@ -37,7 +37,7 @@ config.hyperparameters = {
         "discount_rate": 0.99,
         "incremental_td_error": 1e-8,
         "update_every_n_steps": 1,
-        "linear_hidden_units": [800, 600],
+        "linear_hidden_units": [1000,800],
         "final_layer_activation": None,
         "batch_norm": False,
         "gradient_clipping_norm": 5,
@@ -48,8 +48,8 @@ config.hyperparameters = {
     },
     "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
-            "learning_rate": 0.0005,
-            "linear_hidden_units": [1200, 800],
+            "learning_rate": 0.0008,
+            "linear_hidden_units": [1200, 1200],
             "final_layer_activation": "Softmax",
             "batch_norm": False,
             "tau": 0.005,
@@ -57,8 +57,8 @@ config.hyperparameters = {
         },
 
         "Critic": {
-            "learning_rate": 0.001,
-            "linear_hidden_units": [800,500],
+            "learning_rate": 0.0008,
+            "linear_hidden_units": [1200,1200],
             "final_layer_activation": None,
             "batch_norm": False,
             "buffer_size": 100000,
@@ -84,22 +84,17 @@ config.hyperparameters = {
     }
 }
 
-num_vehicles = 35
-count_file = "../sac/ddqn1_vehicle_{}.txt".format(num_vehicles//5)
+num_cons_nodes = 30
+count_file = "../blockchain/consensus_{}.txt".format(num_cons_nodes//5)
 num_episode = 10
 trials = 100
 action_type = ["random","greedy"]
-task_num = 32
-task_file = "../sac/tasks.txt"
-# config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
-# config.environment.generate_change_tasks("../change_tasks.txt", 8)
 with open(count_file,'w+') as f:
     f.write("")
 for iter in range(1):
     for group in range(1,11):
-        print("num_vehicles=",num_vehicles)
-        config.environment = Blockchain_Environment(num_vehicles=num_vehicles, task_num=task_num)
-        config.environment.load_offloading_tasks(task_file, group)
+        print("num_cons_nodes=",num_cons_nodes)
+        config.environment = Consensus_Environment(num_cons_nodes=num_cons_nodes)
         config.environment.count_file = count_file
         # for i in action_type:
         #     print(i)
@@ -121,7 +116,7 @@ for iter in range(1):
         #         rollings.append(np.mean(results[-trials:]))
         #     print("mean_reward=", np.mean(results),"max_reward=",max(results))
         with open(count_file,'a') as f:
-            f.write("num_vehicles="+str(num_vehicles)+'\n')
-        AGENTS = [DDQN] 
+            f.write("num_Cons_nodes="+str(num_cons_nodes)+'\n')
+        AGENTS = [SAC] 
         trainer = Trainer(config, AGENTS)
         trainer.run_games_for_agents()
