@@ -84,15 +84,15 @@ config.hyperparameters = {
     }
 }
 
-num_vehicles = 35
+num_vehicles = 30
 count_file = "../sac/sac_re{}.txt".format(num_vehicles//5)
 num_episode = 10
 trials = 100
 action_type = ["random","greedy"]
 task_num = 32
-task_file = "../sac/tasks.txt"
-# config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
-# config.environment.generate_change_tasks("../change_tasks.txt", 8)
+task_file = "../blockchain/tasks.txt"
+config.environment = Blockchain_Environment(num_vehicles=50, task_num=task_num)
+config.environment.generate_offload_tasks(task_file, 10)
 with open(count_file,'w+') as f:
     f.write("")
 for iter in range(1):
