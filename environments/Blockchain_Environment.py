@@ -240,10 +240,9 @@ class Consensus_Environment(gym.Env):
         self.BS_F = range(20,30)  #GHz
         self.rho = 0.1
         self.trans_num = 0
-        self.trans_size = 1
+        self.trans_size = 0.002
         self.trans_factor = 0.5
-        self.xi = 1
-        self.T_i = 1
+        self.xi = 0.02
         self.eps_1 = 1
         self.eps_2 = 0.001
         self.comp_a = 8.8e-5
@@ -254,7 +253,7 @@ class Consensus_Environment(gym.Env):
         self.observation_space = spaces.Dict({
             "freq_remain":spaces.Box(0,max(self.BS_F),shape=(self.num_BS,),dtype='float32'),
             "reliability":spaces.Box(0,1,shape=(self.num_BS,),dtype='float32'),
-            "trans_num":spaces.Box(0,1,dtype='float32')})
+            "trans_num":spaces.Box(0,1,shape=(1,), dtype='float32')})
         self.seed()
         self.reward_threshold = 0.0
         self.trials = 100
@@ -319,10 +318,10 @@ class Consensus_Environment(gym.Env):
 
     def change_nodes(self):
         for b in range(self.num_BS):
-            num_vehicles = max(0,int(np.random.normal(90,25)))
+            num_vehicles = max(0,int(np.random.normal(90,30)))
             self.nodes[b]["freq_remain"]=max(0,self.nodes[b]["freq_init"]-self.rho*num_vehicles)
-            self.nodes[b]["reliablity"] += np.random.normal(0,0.1)
-            self.nodes[b]["reliablity"] = min(max(self.nodes[b]["reliablity"],0),1)
+            self.nodes[b]["reliability"] += np.random.normal(0,0.1)
+            self.nodes[b]["reliability"] = min(max(self.nodes[b]["reliability"],0),1)
             self.trans_num+=num_vehicles
         self.trans_num=int(self.trans_num*self.trans_factor)
             
@@ -335,6 +334,7 @@ class Consensus_Environment(gym.Env):
 
     def compute_utility(self, action):
         utility = 0
+        action=(action+1)/2
         consensus_nodes = np.argsort(action[-self.num_cons_nodes:])
         replicas = consensus_nodes[:-1]
         primary = consensus_nodes[-1]
@@ -350,5 +350,5 @@ class Consensus_Environment(gym.Env):
         T_v = max(primary_t, replica_t)
         delay = T_d + T_v
         utility = sum([self.eps_1*b["reliability"]+self.eps_2*trans_num for b in consensus_nodes])/N
-        utility = np.exp(-self.xi*block_size/self.T_i) * utility / delay
+        utility = np.exp(-self.xi*block_size) * utility / delay
         return utility, delay
