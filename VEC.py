@@ -49,7 +49,7 @@ config.hyperparameters = {
     "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
             "learning_rate": 0.0008,
-            "linear_hidden_units": [1200, 1200],
+            "linear_hidden_units": [1000, 800],
             "final_layer_activation": "Softmax",
             "batch_norm": False,
             "tau": 0.005,
@@ -58,7 +58,7 @@ config.hyperparameters = {
 
         "Critic": {
             "learning_rate": 0.0008,
-            "linear_hidden_units": [1200,1200],
+            "linear_hidden_units": [1000, 800],
             "final_layer_activation": None,
             "batch_norm": False,
             "buffer_size": 100000,
@@ -85,7 +85,7 @@ config.hyperparameters = {
 }
 
 num_vehicles = 30
-count_file = "../sac/sac_re{}.txt".format(num_vehicles//5)
+count_file = "../blockchain/offloading_{}.txt".format(num_vehicles//5)
 num_episode = 10
 trials = 100
 action_type = ["random","greedy"]
@@ -96,7 +96,7 @@ config.environment.generate_offload_tasks(task_file, 10)
 with open(count_file,'w+') as f:
     f.write("")
 for iter in range(1):
-    for group in range(1,11):
+    for group in [10]:
         print("num_vehicles=",num_vehicles)
         config.environment = Blockchain_Environment(num_vehicles=num_vehicles, task_num=task_num)
         config.environment.load_offloading_tasks(task_file, group)

@@ -26,9 +26,9 @@ class Blockchain_Environment(gym.Env):
         self.snr_ref = 1 # reference SNR, which is used to compute rate by B*log2(1+snr_ref*d^-a) 
         self.snr_alpha = 2
         self.vehicle_F = range(5,11)  #GHz
-        self.data_size = [0.2, 0.5] #MBytes
-        self.comp_size = [0.2, 0.5] #GHz
-        self.tau = [0.5, 1, 2, 4] #s
+        self.data_size = [0.5, 1] #MBytes
+        self.comp_size = [0.5, 0.8] #GHz
+        self.tau = [1, 2, 4, 8] #s
         self.max_datasize = max(self.data_size)
         self.max_compsize = max(self.comp_size)
         self.max_tau = max(self.tau)
@@ -41,7 +41,7 @@ class Blockchain_Environment(gym.Env):
             "snr":spaces.Box(0,self.snr_ref,shape=(self.max_v,),dtype='float32'),
             "time_remain":spaces.Box(0,100,shape=(self.max_v,),dtype='float32'),
             "freq_remain":spaces.Box(0,max(self.vehicle_F),shape=(self.max_v,),dtype='float32'),
-            "reliability":spaces.Box(0,1,shape=(self.max_v,),dtype='float32'),
+            # "reliability":spaces.Box(0,1,shape=(self.max_v,),dtype='float32'),
             "task":spaces.Box(0,max(self.max_datasize,self.max_compsize,self.max_tau),shape=(3,),dtype='float32')})
         self.seed()
         self.reward_threshold = 0.0
@@ -83,7 +83,7 @@ class Blockchain_Environment(gym.Env):
             "snr":np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
             "time_remain":np.array([min(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 100) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
             "freq_remain":np.array([v["freq_remain"] for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
-            "reliability":np.array([self.compute_reliability(v) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
+            # "reliability":np.array([self.compute_reliability(v) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
             "task":np.array(task)}
         return spaces.flatten(self.observation_space, self.s)
 
@@ -99,7 +99,7 @@ class Blockchain_Environment(gym.Env):
             self.s["snr"] = np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
             self.s["freq_remain"] = np.array([v["freq_remain"] for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
             self.s["time_remain"] = np.array([min(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 100) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
-            self.s["reliability"] = np.array([self.compute_reliability(v) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
+            # self.s["reliability"] = np.array([self.compute_reliability(v) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
             task = self.tasks[self.step_count]
             self.s["task"] = np.array(task)
         return spaces.flatten(self.observation_space, self.s), self.reward, self.done, {}
@@ -209,8 +209,8 @@ class Blockchain_Environment(gym.Env):
         time_remain = max(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 0.00001)
         if t_total <=min(task[2], time_remain):
             utility = np.log(1+task[2]-t_total) - price*task[1]
-            self.count[int(np.log2(task[2]))+1] += 1
-            self.delay[int(np.log2(task[2]))+1] += t_total
+            self.count[int(np.log2(task[2]))] += 1
+            self.delay[int(np.log2(task[2]))] += t_total
             is_finish = 1
             utility_n = np.log(1+task[2]-t_total)/np.log(1+task[2])
         else:
@@ -238,17 +238,17 @@ class Consensus_Environment(gym.Env):
         self.BS_count = 0
         self.rate = 12.5 # MB/s
         self.BS_F = range(20,30)  #GHz
-        self.rho = 0.3
+        self.rho = 0.1
         self.trans_num = 0
         self.trans_size = 1
         self.trans_factor = 0.5
         self.xi = 1
         self.T_i = 1
         self.eps_1 = 1
-        self.eps_2 = 1
-        self.comp_a = 1
-        self.comp_b = 1
-        self.comp_c = 1
+        self.eps_2 = 0.001
+        self.comp_a = 8.8e-5
+        self.comp_b = 1.3e-4
+        self.comp_c = 8.5e-6
 
         self.action_space = spaces.Box(-1,1,shape=(self.num_BS+1,), dtype='float32')
         self.observation_space = spaces.Dict({
@@ -314,16 +314,17 @@ class Consensus_Environment(gym.Env):
         for _ in range(self.num_BS):
             self.BS_count += 1
             freq = random.choice(self.BS_F)
-            r = random.choice(range(51)/50)
+            r = min(max(0,np.random.normal(0.5, 0.2)),1)
             self.nodes.append({"id":self.BS_count, "freq_init":freq, "freq_remain":freq, "reliability":r})
 
     def change_nodes(self):
-        self.trans_num
         for b in range(self.num_BS):
-            num_vehicles = np.random.poisson(30)
-            self.nodes[b]["freq_remain"]=self.nodes[b]["freq_init"]-self.rho*num_vehicles
+            num_vehicles = max(0,int(np.random.normal(90,25)))
+            self.nodes[b]["freq_remain"]=max(0,self.nodes[b]["freq_init"]-self.rho*num_vehicles)
+            self.nodes[b]["reliablity"] += np.random.normal(0,0.1)
+            self.nodes[b]["reliablity"] = min(max(self.nodes[b]["reliablity"],0),1)
             self.trans_num+=num_vehicles
-        self.trans_num=self.trans_num*self.trans_factor
+        self.trans_num=int(self.trans_num*self.trans_factor)
             
     def produce_action(self, action_type):
         if action_type=="random":
