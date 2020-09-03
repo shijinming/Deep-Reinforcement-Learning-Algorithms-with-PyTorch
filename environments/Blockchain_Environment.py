@@ -335,7 +335,8 @@ class Consensus_Environment(gym.Env):
     def compute_utility(self, action):
         utility = 0
         action=(action+1)/2
-        consensus_nodes = np.argsort(action[-self.num_cons_nodes:])
+        consensus_index = np.argsort(action[-self.num_cons_nodes:])
+        consensus_nodes = [self.nodes[i] for i in consensus_index]
         replicas = consensus_nodes[:-1]
         primary = consensus_nodes[-1]
         trans_num = action[-1]*self.trans_num
