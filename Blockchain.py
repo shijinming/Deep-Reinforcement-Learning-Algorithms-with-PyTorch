@@ -48,8 +48,8 @@ config.hyperparameters = {
     },
     "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
-            "learning_rate": 0.0008,
-            "linear_hidden_units": [1200, 1200],
+            "learning_rate": 0.0002,
+            "linear_hidden_units": [128, 128],
             "final_layer_activation": None,
             "batch_norm": False,
             "tau": 0.005,
@@ -57,8 +57,8 @@ config.hyperparameters = {
         },
 
         "Critic": {
-            "learning_rate": 0.0008,
-            "linear_hidden_units": [1200,1200],
+            "learning_rate": 0.0002,
+            "linear_hidden_units": [128,128],
             "final_layer_activation": None,
             "batch_norm": False,
             "buffer_size": 100000,
@@ -84,7 +84,7 @@ config.hyperparameters = {
     }
 }
 
-num_cons_nodes = 30
+num_cons_nodes = 20
 count_file = "../blockchain/consensus_{}.txt".format(num_cons_nodes//5)
 num_episode = 10
 trials = 100

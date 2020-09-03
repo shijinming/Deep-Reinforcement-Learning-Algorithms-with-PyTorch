@@ -237,7 +237,7 @@ class Consensus_Environment(gym.Env):
         self.num_cons_nodes = num_cons_nodes
         self.BS_count = 0
         self.rate = 12.5 # MB/s
-        self.BS_F = range(20,30)  #GHz
+        self.BS_F = range(10,21)  #GHz
         self.rho = 0.1
         self.trans_num = 0
         self.trans_size = 0.002
@@ -300,7 +300,6 @@ class Consensus_Environment(gym.Env):
             self.s["freq_remain"] = np.array([b["freq_remain"] for b in self.nodes])
             self.s["reliability"] = np.array([b["reliability"] for b in self.nodes])
             self.s["trans_num"] = self.trans_num
-        print((action+1)/2)
         return spaces.flatten(self.observation_space, self.s), self.reward, self.done, {}
 
     def compute_reward(self, action):
@@ -353,4 +352,5 @@ class Consensus_Environment(gym.Env):
         delay = T_d + T_v
         utility = sum([self.eps_1*b["reliability"]+self.eps_2*trans_num for b in consensus_nodes])/N
         utility = np.exp(-self.xi*block_size) * utility / delay
-        return utility, delay
+        print(action)
+        return random.random(), delay
