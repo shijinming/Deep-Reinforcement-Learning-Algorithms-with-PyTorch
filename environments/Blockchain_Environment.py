@@ -300,6 +300,7 @@ class Consensus_Environment(gym.Env):
             self.s["freq_remain"] = np.array([b["freq_remain"] for b in self.nodes])
             self.s["reliability"] = np.array([b["reliability"] for b in self.nodes])
             self.s["trans_num"] = self.trans_num
+        print((action+1)/2)
         return spaces.flatten(self.observation_space, self.s), self.reward, self.done, {}
 
     def compute_reward(self, action):
@@ -321,7 +322,7 @@ class Consensus_Environment(gym.Env):
             num_vehicles = max(0,int(np.random.normal(90,30)))
             self.nodes[b]["freq_remain"]=max(0,self.nodes[b]["freq_init"]-self.rho*num_vehicles)
             self.nodes[b]["reliability"] += np.random.normal(0,0.1)
-            self.nodes[b]["reliability"] = min(max(self.nodes[b]["reliability"],0),1)
+            self.nodes[b]["reliability"] = round(min(max(self.nodes[b]["reliability"],0),1),2)
             self.trans_num+=num_vehicles
         self.trans_num=int(self.trans_num*self.trans_factor)
             
