@@ -233,11 +233,11 @@ class Consensus_Environment(gym.Env):
     environment_name = "Consensus in blockchain"
 
     def __init__(self, num_cons_nodes=20):
-        self.num_BS = 50
+        self.num_BS = 8
         self.num_cons_nodes = num_cons_nodes
         self.BS_count = 0
         self.rate = 12.5 # MB/s
-        self.BS_F = range(10,21)  #GHz
+        self.BS_F = range(20,30)  #GHz
         self.rho = 0.1
         self.trans_num = 0
         self.trans_size = 0.002
@@ -245,9 +245,9 @@ class Consensus_Environment(gym.Env):
         self.xi = 0.02
         self.eps_1 = 1
         self.eps_2 = 0.001
-        self.comp_a = 8.8e-5
-        self.comp_b = 1.3e-4
-        self.comp_c = 8.5e-6
+        self.comp_a = 8.8e-2
+        self.comp_b = 1.3e-1
+        self.comp_c = 8.5e-3
 
         self.action_space = spaces.Box(-1,1,shape=(self.num_BS+1,), dtype='float32')
         self.observation_space = spaces.Dict({
@@ -353,4 +353,4 @@ class Consensus_Environment(gym.Env):
         utility = sum([self.eps_1*b["reliability"]+self.eps_2*trans_num for b in consensus_nodes])/N
         utility = np.exp(-self.xi*block_size) * utility / delay
         print(action)
-        return random.random(), delay
+        return utility, delay

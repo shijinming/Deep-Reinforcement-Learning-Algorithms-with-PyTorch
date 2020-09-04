@@ -66,7 +66,7 @@ config.hyperparameters = {
             "gradient_clipping_norm": 5
         },
 
-        "min_steps_before_learning": 1000,
+        "min_steps_before_learning": 1,
         "batch_size": 256,
         "discount_rate": 0.99,
         "mu": 0.0, #for O-H noise
@@ -84,7 +84,7 @@ config.hyperparameters = {
     }
 }
 
-num_cons_nodes = 20
+num_cons_nodes = 5
 count_file = "../blockchain/consensus_{}.txt".format(num_cons_nodes//5)
 num_episode = 10
 trials = 100
