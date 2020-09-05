@@ -242,7 +242,7 @@ class Consensus_Environment(gym.Env):
         self.trans_num = 0
         self.batch_size = 0
         self.trans_size = 0.002
-        self.trans_factor = 0.5
+        self.trans_factor = 1
         self.block_interval = 5
         self.delta = 1.6
         self.xi = 0.02
@@ -268,7 +268,7 @@ class Consensus_Environment(gym.Env):
         self.consensus_delay = 0
         self.count_file = "consensus.txt"
         self.utility = 0
-        self.nodes = [] #vehicles in the range
+        self.init_nodes()
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -288,7 +288,7 @@ class Consensus_Environment(gym.Env):
         self.utility = 0
         self.consensus_delay = 0
         for b in self.nodes:
-            b["freq_remain"] = b["freq"]
+            b["freq_remain"] = b["freq_init"]
         self.s = {
             "freq_remain":np.array([b["freq_remain"] for b in self.nodes]),
             "reliability":np.array([b["reliability"] for b in self.nodes]),
@@ -307,6 +307,8 @@ class Consensus_Environment(gym.Env):
             self.s["freq_remain"] = np.array([b["freq_remain"] for b in self.nodes])
             self.s["reliability"] = np.array([b["reliability"] for b in self.nodes])
             self.s["trans_num"] = self.trans_num
+        print(action)
+        print(self.s)
         return spaces.flatten(self.observation_space, self.s), self.reward, self.done, {}
 
     def compute_reward(self, action):
@@ -318,7 +320,7 @@ class Consensus_Environment(gym.Env):
         else:
             reward, delay = self.compute_utility(action)
             self.consensus_delay += delay
-            self.nodes[action]["freq_remain"] = 1e-6
+            self.nodes[action]["freq_remain"] = 0.1
         return reward
 
     def init_nodes(self):

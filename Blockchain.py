@@ -37,7 +37,7 @@ config.hyperparameters = {
         "discount_rate": 0.99,
         "incremental_td_error": 1e-8,
         "update_every_n_steps": 1,
-        "linear_hidden_units": [1000,800],
+        "linear_hidden_units": [1000,200],
         "final_layer_activation": None,
         "batch_norm": False,
         "gradient_clipping_norm": 5,
@@ -85,7 +85,7 @@ config.hyperparameters = {
 }
 
 
-num_cons_nodes = 20
+num_cons_nodes = 10
 count_file = "../blockchain/consensus_{}.txt".format(num_cons_nodes//5)
 num_episode = 10
 trials = 100
