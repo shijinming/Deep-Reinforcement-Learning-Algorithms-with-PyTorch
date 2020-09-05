@@ -232,24 +232,28 @@ class Blockchain_Environment(gym.Env):
 class Consensus_Environment(gym.Env):
     environment_name = "Consensus in blockchain"
 
-    def __init__(self, num_cons_nodes=20):
-        self.num_BS = 8
+    def __init__(self, numBS=50, num_cons_nodes=20):
+        self.num_BS = 50
         self.num_cons_nodes = num_cons_nodes
         self.BS_count = 0
         self.rate = 12.5 # MB/s
         self.BS_F = range(20,30)  #GHz
         self.rho = 0.1
         self.trans_num = 0
+        self.batch_size = 0
         self.trans_size = 0.002
         self.trans_factor = 0.5
+        self.block_interval = 5
+        self.delta = 1.6
         self.xi = 0.02
-        self.eps_1 = 1
+        self.eps_1 = 0.1
         self.eps_2 = 0.001
-        self.comp_a = 8.8e-2
-        self.comp_b = 1.3e-1
-        self.comp_c = 8.5e-3
+        self.comp_a = 0.002
+        self.comp_b = 0.008
+        self.comp_c = 0.0005
+        self.blocksize_level = 20
 
-        self.action_space = spaces.Box(-1,1,shape=(self.num_BS+1,), dtype='float32')
+        self.action_space = spaces.Discrete(self.num_BS+self.blocksize_level)
         self.observation_space = spaces.Dict({
             "freq_remain":spaces.Box(0,max(self.BS_F),shape=(self.num_BS,),dtype='float32'),
             "reliability":spaces.Box(0,1,shape=(self.num_BS,),dtype='float32'),
@@ -313,14 +317,15 @@ class Consensus_Environment(gym.Env):
         for _ in range(self.num_BS):
             self.BS_count += 1
             freq = random.choice(self.BS_F)
+            num_vehicles = max(0,int(np.random.normal(90,30)))
+            freq_r=max(0,freq-self.rho*num_vehicles)
             r = min(max(0,np.random.normal(0.5, 0.2)),1)
-            self.nodes.append({"id":self.BS_count, "freq_init":freq, "freq_remain":freq, "reliability":r})
+            self.nodes.append({"id":self.BS_count, "freq_init":freq, "freq_remain":freq_r, "reliability":r})
 
     def change_nodes(self):
         for b in range(self.num_BS):
             num_vehicles = max(0,int(np.random.normal(90,30)))
-            self.nodes[b]["freq_remain"]=max(0,self.nodes[b]["freq_init"]-self.rho*num_vehicles)
-            self.nodes[b]["reliability"] += np.random.normal(0,0.1)
+            self.nodes[b]["reliability"] += np.random.normal(0,0.02)
             self.nodes[b]["reliability"] = round(min(max(self.nodes[b]["reliability"],0),1),2)
             self.trans_num+=num_vehicles
         self.trans_num=int(self.trans_num*self.trans_factor)
@@ -334,23 +339,24 @@ class Consensus_Environment(gym.Env):
 
     def compute_utility(self, action):
         utility = 0
-        action=(action+1)/2
-        consensus_index = np.argsort(action[-self.num_cons_nodes:])
-        consensus_nodes = [self.nodes[i] for i in consensus_index]
+        consensus_nodes = [self.nodes[i] for i in action[-self.num_cons_nodes-1:-1]]
         replicas = consensus_nodes[:-1]
         primary = consensus_nodes[-1]
-        trans_num = action[-1]*self.trans_num
+        trans_num = action[-1]/self.blocksize_level*self.trans_num
         block_size = trans_num*self.trans_size
-        T_d = 5*block_size/self.rate
+        T_d = 50*block_size/self.rate
         N = self.num_cons_nodes
         f = (N-1)//3
         comp_p = trans_num*(self.comp_b+self.comp_c) + self.comp_a + (2*N+4*f)*self.comp_c
         comp_r = trans_num*(self.comp_b+self.comp_c) + (2*N+4*f)*self.comp_c
         primary_t = comp_p/primary["freq_remain"]
-        replica_t = max([comp_r/r["freq_remain"] for r in replicas])
+        replica_t = comp_r/min([r["freq_remain"] for r in replicas])
         T_v = max(primary_t, replica_t)
         delay = T_d + T_v
-        utility = sum([self.eps_1*b["reliability"]+self.eps_2*trans_num for b in consensus_nodes])/N
-        utility = np.exp(-self.xi*block_size) * utility / delay
-        print(action)
-        return utility, delay
+        if delay < self.delta*self.block_interval:
+            utility = sum([self.eps_1*b["reliability"]+self.eps_2*trans_num for b in consensus_nodes])/N
+            utility = np.log(1 + self.delta*self.block_interval - delay) * utility
+        else:
+            utility = 0
+        # print(action[-1])
+        return random.random(), delay
