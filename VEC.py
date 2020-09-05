@@ -48,8 +48,8 @@ config.hyperparameters = {
     },
     "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
-            "learning_rate": 0.0008,
-            "linear_hidden_units": [1000, 800],
+            "learning_rate": 0.0005,
+            "linear_hidden_units": [200, 100],
             "final_layer_activation": "Softmax",
             "batch_norm": False,
             "tau": 0.005,
@@ -57,8 +57,8 @@ config.hyperparameters = {
         },
 
         "Critic": {
-            "learning_rate": 0.0008,
-            "linear_hidden_units": [1000, 800],
+            "learning_rate": 0.0005,
+            "linear_hidden_units": [200, 100],
             "final_layer_activation": None,
             "batch_norm": False,
             "buffer_size": 100000,
@@ -91,8 +91,8 @@ trials = 100
 action_type = ["random","greedy"]
 task_num = 32
 task_file = "../blockchain/tasks.txt"
-config.environment = Blockchain_Environment(num_vehicles=50, task_num=task_num)
-config.environment.generate_offload_tasks(task_file, 10)
+# config.environment = Blockchain_Environment(num_vehicles=50, task_num=task_num)
+# config.environment.generate_offload_tasks(task_file, 10)
 with open(count_file,'w+') as f:
     f.write("")
 for iter in range(1):
@@ -122,6 +122,6 @@ for iter in range(1):
         #     print("mean_reward=", np.mean(results),"max_reward=",max(results))
         with open(count_file,'a') as f:
             f.write("num_vehicles="+str(num_vehicles)+'\n')
-        AGENTS = [DDQN] 
+        AGENTS = [SAC_Discrete] 
         trainer = Trainer(config, AGENTS)
         trainer.run_games_for_agents()

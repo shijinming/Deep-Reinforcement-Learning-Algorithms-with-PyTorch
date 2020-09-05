@@ -26,9 +26,9 @@ class Blockchain_Environment(gym.Env):
         self.snr_ref = 1 # reference SNR, which is used to compute rate by B*log2(1+snr_ref*d^-a) 
         self.snr_alpha = 2
         self.vehicle_F = range(5,11)  #GHz
-        self.data_size = [0.5, 1] #MBytes
-        self.comp_size = [0.5, 0.8] #GHz
-        self.tau = [1, 2, 4, 8] #s
+        self.data_size = [0.2, 0.5] #MBytes
+        self.comp_size = [0.2, 0.4] #GHz
+        self.tau = [0.5, 1, 2, 4] #s
         self.max_datasize = max(self.data_size)
         self.max_compsize = max(self.comp_size)
         self.max_tau = max(self.tau)
@@ -41,7 +41,7 @@ class Blockchain_Environment(gym.Env):
             "snr":spaces.Box(0,self.snr_ref,shape=(self.max_v,),dtype='float32'),
             "time_remain":spaces.Box(0,100,shape=(self.max_v,),dtype='float32'),
             "freq_remain":spaces.Box(0,max(self.vehicle_F),shape=(self.max_v,),dtype='float32'),
-            # "reliability":spaces.Box(0,1,shape=(self.max_v,),dtype='float32'),
+            "reliability":spaces.Box(0,1,shape=(self.max_v,),dtype='float32'),
             "task":spaces.Box(0,max(self.max_datasize,self.max_compsize,self.max_tau),shape=(3,),dtype='float32')})
         self.seed()
         self.reward_threshold = 0.0
@@ -83,7 +83,7 @@ class Blockchain_Environment(gym.Env):
             "snr":np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
             "time_remain":np.array([min(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 100) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
             "freq_remain":np.array([v["freq_remain"] for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
-            # "reliability":np.array([self.compute_reliability(v) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
+            "reliability":np.array([self.compute_reliability(v) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
             "task":np.array(task)}
         return spaces.flatten(self.observation_space, self.s)
 
@@ -99,7 +99,7 @@ class Blockchain_Environment(gym.Env):
             self.s["snr"] = np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
             self.s["freq_remain"] = np.array([v["freq_remain"] for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
             self.s["time_remain"] = np.array([min(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 100) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
-            # self.s["reliability"] = np.array([self.compute_reliability(v) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
+            self.s["reliability"] = np.array([self.compute_reliability(v) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles))
             task = self.tasks[self.step_count]
             self.s["task"] = np.array(task)
         return spaces.flatten(self.observation_space, self.s), self.reward, self.done, {}
@@ -209,8 +209,8 @@ class Blockchain_Environment(gym.Env):
         time_remain = max(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 0.00001)
         if t_total <=min(task[2], time_remain):
             utility = np.log(1+task[2]-t_total) - price*task[1]
-            self.count[int(np.log2(task[2]))] += 1
-            self.delay[int(np.log2(task[2]))] += t_total
+            self.count[int(np.log2(task[2]))+1] += 1
+            self.delay[int(np.log2(task[2]))+1] += t_total
             is_finish = 1
             utility_n = np.log(1+task[2]-t_total)/np.log(1+task[2])
         else:
@@ -263,7 +263,7 @@ class Consensus_Environment(gym.Env):
         self.trials = 100
         self.max_episode_steps = 100
         self._max_episode_steps = 100
-        self.step_num_per_episode = self.num_cons_nodes
+        self.step_num_per_episode = self.num_cons_nodes + 1
         self.id = "Consensus"
         self.consensus_delay = 0
         self.count_file = "consensus.txt"
@@ -277,7 +277,6 @@ class Consensus_Environment(gym.Env):
     def reset(self):
         """Resets the environment and returns the start state"""
         self.step_count = 0
-        self.count = 0
         self.next_state = None
         self.reward = None
         self.done = False
@@ -287,8 +286,7 @@ class Consensus_Environment(gym.Env):
         self.actions=[]
         self.utility = 0
         self.consensus_delay = 0
-        for b in self.nodes:
-            b["freq_remain"] = b["freq_init"]
+        self.init_nodes()
         self.s = {
             "freq_remain":np.array([b["freq_remain"] for b in self.nodes]),
             "reliability":np.array([b["reliability"] for b in self.nodes]),
@@ -300,15 +298,13 @@ class Consensus_Environment(gym.Env):
         self.reward = self.compute_reward(action)
         self.utility += self.reward
         self.actions.append(action)
-        if self.step_count >= self.step_num_per_episode: 
+        if self.step_count == self.step_num_per_episode: 
             self.done = True
         else: 
             self.done = False
             self.s["freq_remain"] = np.array([b["freq_remain"] for b in self.nodes])
             self.s["reliability"] = np.array([b["reliability"] for b in self.nodes])
             self.s["trans_num"] = self.trans_num
-        print(action)
-        print(self.s)
         return spaces.flatten(self.observation_space, self.s), self.reward, self.done, {}
 
     def compute_reward(self, action):
@@ -316,11 +312,11 @@ class Consensus_Environment(gym.Env):
         interface to fit with the open AI gym specifications"""
         if self.step_count == 1:
             reward = 0
-            self.batch_size = int(action/self.num_BS*self.trans_num)
+            self.batch_size = int((action+1)/self.num_BS*self.trans_num)
         else:
             reward, delay = self.compute_utility(action)
             self.consensus_delay += delay
-            self.nodes[action]["freq_remain"] = 0.1
+            self.nodes[action]["freq_remain"] = 1e-6
         return reward
 
     def init_nodes(self):
@@ -361,6 +357,5 @@ class Consensus_Environment(gym.Env):
             utility = self.eps_1*self.nodes[action]["reliability"]+self.eps_2*self.batch_size
             utility = np.log(1 + self.delta*self.block_interval - delay) * utility
         else:
-            utility = -100*np.log(1+self.delta*self.block_interval)
-            self.count+=1
+            utility = -10*np.log(1+self.delta*self.block_interval)
         return utility, delay
