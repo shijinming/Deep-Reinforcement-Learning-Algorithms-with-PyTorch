@@ -232,7 +232,7 @@ class Blockchain_Environment(gym.Env):
 class Consensus_Environment(gym.Env):
     environment_name = "Consensus in blockchain"
 
-    def __init__(self, numBS=50, num_cons_nodes=20):
+    def __init__(self, num_cons_nodes=20):
         self.num_BS = 50
         self.num_cons_nodes = num_cons_nodes
         self.BS_count = 0
@@ -251,9 +251,8 @@ class Consensus_Environment(gym.Env):
         self.comp_a = 0.002
         self.comp_b = 0.008
         self.comp_c = 0.0005
-        self.blocksize_level = 20
 
-        self.action_space = spaces.Discrete(self.num_BS+self.blocksize_level)
+        self.action_space = spaces.Discrete(self.num_BS)
         self.observation_space = spaces.Dict({
             "freq_remain":spaces.Box(0,max(self.BS_F),shape=(self.num_BS,),dtype='float32'),
             "reliability":spaces.Box(0,1,shape=(self.num_BS,),dtype='float32'),
@@ -263,7 +262,7 @@ class Consensus_Environment(gym.Env):
         self.trials = 100
         self.max_episode_steps = 100
         self._max_episode_steps = 100
-        self.step_num_per_episode = 20
+        self.step_num_per_episode = self.num_cons_nodes
         self.id = "Consensus"
         self.consensus_delay = 0
         self.count_file = "consensus.txt"
@@ -277,7 +276,7 @@ class Consensus_Environment(gym.Env):
 
     def reset(self):
         """Resets the environment and returns the start state"""
-        self.change_nodes()
+        self.init_nodes()
         self.step_count = 0
         self.next_state = None
         self.reward = None
@@ -296,7 +295,6 @@ class Consensus_Environment(gym.Env):
         self.step_count += 1
         self.reward = self.compute_reward(action)
         self.utility += self.reward
-        self.change_nodes()
         if self.step_count >= self.step_num_per_episode: 
             self.done = True
         else: 
@@ -309,26 +307,28 @@ class Consensus_Environment(gym.Env):
     def compute_reward(self, action):
         """Computes the reward we would have got with this achieved goal and desired goal. Must be of this exact
         interface to fit with the open AI gym specifications"""
-        reward, delay = self.compute_utility(action)
-        self.consensus_delay += delay
+        if self.step_count == 1:
+            reward = 0
+            self.batch_size = action/self.num_BS*self.trans_num
+        else:
+            reward, delay = self.compute_utility(action)
+            self.consensus_delay += delay
+            self.nodes[action]["freq_remain"] = 1e-6
         return reward
 
     def init_nodes(self):
+        self.trans_num = 0
         for _ in range(self.num_BS):
             self.BS_count += 1
             freq = random.choice(self.BS_F)
             num_vehicles = max(0,int(np.random.normal(90,30)))
+            self.trans_num+=num_vehicles*self.trans_factor
             freq_r=max(0,freq-self.rho*num_vehicles)
             r = min(max(0,np.random.normal(0.5, 0.2)),1)
             self.nodes.append({"id":self.BS_count, "freq_init":freq, "freq_remain":freq_r, "reliability":r})
 
-    def change_nodes(self):
-        for b in range(self.num_BS):
-            num_vehicles = max(0,int(np.random.normal(90,30)))
-            self.nodes[b]["reliability"] += np.random.normal(0,0.02)
-            self.nodes[b]["reliability"] = round(min(max(self.nodes[b]["reliability"],0),1),2)
-            self.trans_num+=num_vehicles
-        self.trans_num=int(self.trans_num*self.trans_factor)
+    def change_nodes(self, action):
+        pass
             
     def produce_action(self, action_type):
         if action_type=="random":
@@ -339,24 +339,20 @@ class Consensus_Environment(gym.Env):
 
     def compute_utility(self, action):
         utility = 0
-        consensus_nodes = [self.nodes[i] for i in action[-self.num_cons_nodes-1:-1]]
-        replicas = consensus_nodes[:-1]
-        primary = consensus_nodes[-1]
-        trans_num = action[-1]/self.blocksize_level*self.trans_num
-        block_size = trans_num*self.trans_size
+        block_size = self.batch_size*self.trans_size
         T_d = 50*block_size/self.rate
         N = self.num_cons_nodes
         f = (N-1)//3
-        comp_p = trans_num*(self.comp_b+self.comp_c) + self.comp_a + (2*N+4*f)*self.comp_c
-        comp_r = trans_num*(self.comp_b+self.comp_c) + (2*N+4*f)*self.comp_c
-        primary_t = comp_p/primary["freq_remain"]
-        replica_t = comp_r/min([r["freq_remain"] for r in replicas])
-        T_v = max(primary_t, replica_t)
+        if self.step_count == 2:
+            comp = self.batch_size*(self.comp_b+self.comp_c) + self.comp_a + (2*N+4*f)*self.comp_c
+        else:
+            comp = self.batch_size*(self.comp_b+self.comp_c) + (2*N+4*f)*self.comp_c
+        T_v = comp/self.nodes[action]["freq_remain"]
         delay = T_d + T_v
-        if delay < self.delta*self.block_interval:
-            utility = sum([self.eps_1*b["reliability"]+self.eps_2*trans_num for b in consensus_nodes])/N
+        if delay <= self.delta*self.block_interval:
+            utility = self.eps_1*b["reliability"]+self.eps_2*self.batch_size
             utility = np.log(1 + self.delta*self.block_interval - delay) * utility
         else:
-            utility = 0
+            utility = -100*np.log(1+self.delta*self.block_interval)
         # print(action[-1])
-        return random.random(), delay
+        return utility, delay

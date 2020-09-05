@@ -66,7 +66,7 @@ config.hyperparameters = {
             "gradient_clipping_norm": 5
         },
 
-        "min_steps_before_learning": 0,
+        "min_steps_before_learning": 1000,
         "batch_size": 256,
         "discount_rate": 0.99,
         "mu": 0.0, #for O-H noise
@@ -84,9 +84,9 @@ config.hyperparameters = {
     }
 }
 
-config.num_BS=50
-config.num_cons_nodes = 20
-count_file = "../blockchain/consensus_{}.txt".format(config.num_cons_nodes//5)
+
+num_cons_nodes = 20
+count_file = "../blockchain/consensus_{}.txt".format(num_cons_nodes//5)
 num_episode = 10
 trials = 100
 action_type = ["random","greedy"]
@@ -94,8 +94,8 @@ with open(count_file,'w+') as f:
     f.write("")
 for iter in range(1):
     for group in range(1,11):
-        print("num_cons_nodes=",config.num_cons_nodes)
-        config.environment = Consensus_Environment(numBS=config.num_BS, num_cons_nodes=config.num_cons_nodes)
+        print("num_cons_nodes=",num_cons_nodes)
+        config.environment = Consensus_Environment(num_cons_nodes=num_cons_nodes)
         config.environment.count_file = count_file
         # for i in action_type:
         #     print(i)
@@ -117,7 +117,7 @@ for iter in range(1):
         #         rollings.append(np.mean(results[-trials:]))
         #     print("mean_reward=", np.mean(results),"max_reward=",max(results))
         with open(count_file,'a') as f:
-            f.write("num_Cons_nodes="+str(config.num_cons_nodes)+'\n')
+            f.write("num_Cons_nodes="+str(num_cons_nodes)+'\n')
         AGENTS = [SAC_Discrete] 
         trainer = Trainer(config, AGENTS)
         trainer.run_games_for_agents()
