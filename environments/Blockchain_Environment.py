@@ -251,12 +251,13 @@ class Consensus_Environment(gym.Env):
         self.comp_a = 0.002
         self.comp_b = 0.008
         self.comp_c = 0.0005
+        self.actions = []
 
         self.action_space = spaces.Discrete(self.num_BS)
         self.observation_space = spaces.Dict({
             "freq_remain":spaces.Box(0,max(self.BS_F),shape=(self.num_BS,),dtype='float32'),
             "reliability":spaces.Box(0,1,shape=(self.num_BS,),dtype='float32'),
-            "trans_num":spaces.Box(0,1,shape=(1,), dtype='float32')})
+            "trans_num":spaces.Box(0,5000,shape=(1,), dtype='float32')})
         self.seed()
         self.reward_threshold = 0.0
         self.trials = 100
@@ -268,7 +269,6 @@ class Consensus_Environment(gym.Env):
         self.count_file = "consensus.txt"
         self.utility = 0
         self.nodes = [] #vehicles in the range
-        self.init_nodes()
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -276,15 +276,19 @@ class Consensus_Environment(gym.Env):
 
     def reset(self):
         """Resets the environment and returns the start state"""
-        self.init_nodes()
         self.step_count = 0
+        self.count = 0
         self.next_state = None
         self.reward = None
         self.done = False
         with open(self.count_file,'a') as f:
-            f.write(str(self.utility/self.step_num_per_episode)+' '+str(self.consensus_delay/self.step_num_per_episode)+' '+'\n')
+            # f.write(str(self.utility/self.step_num_per_episode)+' '+str(self.consensus_delay/self.step_num_per_episode)+' '+'\n')
+            f.write(' '.join([str(i) for i in self.actions])+'\n')
+        self.actions=[]
         self.utility = 0
         self.consensus_delay = 0
+        for b in self.nodes:
+            b["freq_remain"] = b["freq"]
         self.s = {
             "freq_remain":np.array([b["freq_remain"] for b in self.nodes]),
             "reliability":np.array([b["reliability"] for b in self.nodes]),
@@ -295,6 +299,7 @@ class Consensus_Environment(gym.Env):
         self.step_count += 1
         self.reward = self.compute_reward(action)
         self.utility += self.reward
+        self.actions.append(action)
         if self.step_count >= self.step_num_per_episode: 
             self.done = True
         else: 
@@ -309,7 +314,7 @@ class Consensus_Environment(gym.Env):
         interface to fit with the open AI gym specifications"""
         if self.step_count == 1:
             reward = 0
-            self.batch_size = action/self.num_BS*self.trans_num
+            self.batch_size = int(action/self.num_BS*self.trans_num)
         else:
             reward, delay = self.compute_utility(action)
             self.consensus_delay += delay
@@ -317,12 +322,13 @@ class Consensus_Environment(gym.Env):
         return reward
 
     def init_nodes(self):
+        self.nodes=[]
         self.trans_num = 0
         for _ in range(self.num_BS):
             self.BS_count += 1
             freq = random.choice(self.BS_F)
             num_vehicles = max(0,int(np.random.normal(90,30)))
-            self.trans_num+=num_vehicles*self.trans_factor
+            self.trans_num+=int(num_vehicles*self.trans_factor)
             freq_r=max(0,freq-self.rho*num_vehicles)
             r = min(max(0,np.random.normal(0.5, 0.2)),1)
             self.nodes.append({"id":self.BS_count, "freq_init":freq, "freq_remain":freq_r, "reliability":r})
@@ -350,9 +356,9 @@ class Consensus_Environment(gym.Env):
         T_v = comp/self.nodes[action]["freq_remain"]
         delay = T_d + T_v
         if delay <= self.delta*self.block_interval:
-            utility = self.eps_1*b["reliability"]+self.eps_2*self.batch_size
+            utility = self.eps_1*self.nodes[action]["reliability"]+self.eps_2*self.batch_size
             utility = np.log(1 + self.delta*self.block_interval - delay) * utility
         else:
             utility = -100*np.log(1+self.delta*self.block_interval)
-        # print(action[-1])
+            self.count+=1
         return utility, delay

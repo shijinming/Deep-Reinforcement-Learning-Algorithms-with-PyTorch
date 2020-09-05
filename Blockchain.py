@@ -49,7 +49,7 @@ config.hyperparameters = {
     "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
             "learning_rate": 0.0002,
-            "linear_hidden_units": [800, 600],
+            "linear_hidden_units": [128, 64],
             "final_layer_activation": "Softmax",
             "batch_norm": False,
             "tau": 0.005,
@@ -58,7 +58,7 @@ config.hyperparameters = {
 
         "Critic": {
             "learning_rate": 0.0002,
-            "linear_hidden_units": [800,600],
+            "linear_hidden_units": [128,64],
             "final_layer_activation": None,
             "batch_norm": False,
             "buffer_size": 100000,
@@ -66,7 +66,7 @@ config.hyperparameters = {
             "gradient_clipping_norm": 5
         },
 
-        "min_steps_before_learning": 1000,
+        "min_steps_before_learning": 5000,
         "batch_size": 256,
         "discount_rate": 0.99,
         "mu": 0.0, #for O-H noise
@@ -118,6 +118,6 @@ for iter in range(1):
         #     print("mean_reward=", np.mean(results),"max_reward=",max(results))
         with open(count_file,'a') as f:
             f.write("num_Cons_nodes="+str(num_cons_nodes)+'\n')
-        AGENTS = [SAC_Discrete] 
+        AGENTS = [DDQN] 
         trainer = Trainer(config, AGENTS)
         trainer.run_games_for_agents()
