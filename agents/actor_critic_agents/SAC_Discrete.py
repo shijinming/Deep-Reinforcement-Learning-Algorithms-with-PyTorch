@@ -7,9 +7,6 @@ from utilities.data_structures.Replay_Buffer import Replay_Buffer
 from agents.actor_critic_agents.SAC import SAC
 from utilities.Utility_Functions import create_actor_distribution
 
-from torch.utils.data import WeightedRandomSampler
-from torch.distributions import Categorical
-
 class SAC_Discrete(SAC):
     """The Soft Actor Critic for discrete actions. It inherits from SAC for continuous actions and only changes a few
     methods."""
@@ -92,25 +89,3 @@ class SAC_Discrete(SAC):
         policy_loss = policy_loss.mean()
         log_action_probabilities = torch.sum(log_action_probabilities * action_probabilities, dim=1)
         return policy_loss, log_action_probabilities
-
-    # def produce_action_and_action_info(self, state):
-    #     """Given the state, produces an action, the probability of the action, the log probability of the action, and
-    #     the argmax action"""
-    #     action_probabilities = self.actor_local(state)
-    #     max_prob_action1 = action_probabilities[0][:self.config.num_BS].argsort().unsqueeze(0)
-    #     max_prob_action2 = action_probabilities[0][self.config.num_BS:].argmax().unsqueeze(0).unsqueeze(0)
-    #     max_probability_action = torch.cat((max_prob_action1,max_prob_action2),1)
-    #     z = action_probabilities[0] == 0.0
-    #     z = z.float() * 1e-8
-    #     action_prob = action_probabilities[0] + z
-    #     # print(action_prob)
-    #     sample = list(WeightedRandomSampler(action_prob[:self.config.num_BS],num_samples=self.config.num_cons_nodes,replacement=False))
-    #     action1=torch.tensor(sample).unsqueeze(0).to(self.device)
-    #     action2 = Categorical(action_prob[self.config.num_BS:]).sample().unsqueeze(0).unsqueeze(0)
-    #     action = torch.cat((action1,action2),1)
-    #     # print(action)
-    #     # Have to deal with situation of 0.0 probabilities because we can't do log 0
-    #     z = action_probabilities[0] == 0.0
-    #     z = z.float() * 1e-8
-    #     log_action_probabilities = torch.log(action_probabilities + z)
-    #     return action, (action_probabilities, log_action_probabilities), max_probability_action
