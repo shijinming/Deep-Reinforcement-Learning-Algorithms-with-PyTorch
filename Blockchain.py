@@ -26,7 +26,7 @@ config.use_GPU = True
 config.overwrite_existing_results_file = False
 config.randomise_random_seed = True
 config.save_model = False
-config.device = "cuda:1"
+config.device = "cuda:0"
 
 config.hyperparameters = {
     "DQN_Agents": {
@@ -37,7 +37,7 @@ config.hyperparameters = {
         "discount_rate": 0.99,
         "incremental_td_error": 1e-8,
         "update_every_n_steps": 1,
-        "linear_hidden_units": [500,100],
+        "linear_hidden_units": [1000,1000],
         "final_layer_activation": None,
         "batch_norm": False,
         "gradient_clipping_norm": 5,
