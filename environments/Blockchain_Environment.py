@@ -316,7 +316,7 @@ class Consensus_Environment(gym.Env):
         else:
             reward, delay = self.compute_utility(action)
             self.consensus_delay += delay
-            self.nodes[action]["freq_remain"] = 1e-6
+            self.nodes[action]["freq_remain"] = 0
         return reward
 
     def init_nodes(self):
@@ -351,7 +351,10 @@ class Consensus_Environment(gym.Env):
             comp = self.batch_size*(self.comp_b+self.comp_c) + self.comp_a + (2*N+4*f)*self.comp_c
         else:
             comp = self.batch_size*(self.comp_b+self.comp_c) + (2*N+4*f)*self.comp_c
-        T_v = comp/self.nodes[action]["freq_remain"]
+        if self.nodes[action]["freq_remain"]==0:
+            T_v = 1e6
+        else:
+            T_v = comp/self.nodes[action]["freq_remain"]
         delay = T_d + T_v
         if delay <= self.delta*self.block_interval:
             utility = self.eps_1*self.nodes[action]["reliability"]+self.eps_2*self.batch_size
