@@ -14,7 +14,7 @@ import numpy as np
 config = Config()
 config.seed = 1
     
-config.num_episodes_to_run = 8000
+config.num_episodes_to_run = 20000
 # config.file_to_save_data_results = "results/data_and_graphs/VEC.pkl"
 # config.file_to_save_results_graph = "results/data_and_graphs/VEC.png"
 config.show_solution_score = False
@@ -48,8 +48,8 @@ config.hyperparameters = {
     },
     "Actor_Critic_Agents": {  # hyperparameters taken from https://arxiv.org/pdf/1802.09477.pdf
         "Actor": {
-            "learning_rate": 0.0002,
-            "linear_hidden_units": [1000, 200],
+            "learning_rate": 0.0008,
+            "linear_hidden_units": [800, 500],
             "final_layer_activation": "Softmax",
             "batch_norm": False,
             "tau": 0.005,
@@ -57,8 +57,8 @@ config.hyperparameters = {
         },
 
         "Critic": {
-            "learning_rate": 0.0002,
-            "linear_hidden_units": [1000, 200],
+            "learning_rate": 0.0008,
+            "linear_hidden_units": [800, 500],
             "final_layer_activation": None,
             "batch_norm": False,
             "buffer_size": 100000,
@@ -125,3 +125,4 @@ for iter in range(1):
         AGENTS = [SAC_Discrete] 
         trainer = Trainer(config, AGENTS)
         trainer.run_games_for_agents()
+        print(config.hyperparameters["Actor_Critic_Agents"])

@@ -20,7 +20,7 @@ class Blockchain_Environment(gym.Env):
         self.task_num_per_episode = task_num
         self.vehicle_count = 0
         self.maxR = 500 #m, max relative distance between request vehicle and other vehicles
-        self.maxV = 30 #km/h, max relative velocity between requst vehicle and other vehicles
+        self.maxV = 33 #km/h, max relative velocity between requst vehicle and other vehicles
         self.max_v = 50 # maximum vehicles in the communication range of request vehicle
         self.bandwidth = 10 # MHz
         self.snr_ref = 1 # reference SNR, which is used to compute rate by B*log2(1+snr_ref*d^-a) 
@@ -34,7 +34,7 @@ class Blockchain_Environment(gym.Env):
         self.max_tau = max(self.tau)
         self.price_level = 10
         self.kappa = 0.05
-        self.penalty = -2*np.log(1+self.max_tau)
+        self.penalty = -np.log(1+self.max_tau)
 
         self.action_space = spaces.Discrete(self.num_vehicles*self.price_level)
         self.observation_space = spaces.Dict({
@@ -69,6 +69,7 @@ class Blockchain_Environment(gym.Env):
         self.next_state = None
         self.reward = None
         self.done = False
+        self.move_vehicles()
         for v in self.vehicles:
             v["freq_remain"] = v["freq_init"]
             v["position"] = v["position_init"]
@@ -121,15 +122,16 @@ class Blockchain_Environment(gym.Env):
         return reward
 
     def init_vehicles(self):
-        for _ in range(self.num_vehicles):
+        for v in range(self.num_vehicles):
             self.vehicle_count += 1
-            v_f = random.choice(self.vehicle_F)
+            v_f = (v%3+1)*2+3
             v_p = random.uniform(-self.maxR*0.9,self.maxR*0.9)
             v_v = np.random.normal(0, self.maxV/2)
             v_v = v_v if v_v!=0 else random.choice([-0.1, 0.1])
-            v_r = min(max(0, np.random.normal(0.5,0.2)),1)
+            v_r = (v%10+1)/10
             self.vehicles.append({"id":self.vehicle_count, "position":v_p, "position_init":v_p, "velocity":v_v, "reliability":v_r,
             "freq_init":v_f, "freq_remain":v_f, "task_num":0, "finish_task":[0]*100, "utility":[0]*100})
+            np.random.shuffle(self.vehicles)
 
     def add_vehicle(self):
         if len(self.vehicles) <= self.num_vehicles:
@@ -144,10 +146,9 @@ class Blockchain_Environment(gym.Env):
 
     def move_vehicles(self):
         for i in range(len(self.vehicles)):
-            self.vehicles[i]["position"] += self.vehicles[i]["velocity"]/3.6*0.1
-            # if abs(self.vehicles[i]["position"]) >= self.maxR:
-            #     self.vehicles.pop(i)
-            #     self.add_vehicle()
+            self.vehicles[i]["position"] += self.vehicles[i]["velocity"]/3.6*0.5
+            if abs(self.vehicles[i]["position"]) >= self.maxR:
+                self.vehicles[i]["position"] = -self.vehicles[i]["position"]
     
     def generate_offload_tasks(self, file, group_num):
         with open(file,'w+') as f:
