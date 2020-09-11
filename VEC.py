@@ -14,7 +14,7 @@ import numpy as np
 config = Config()
 config.seed = 1
     
-config.num_episodes_to_run = 8000
+config.num_episodes_to_run = 6000
 # config.file_to_save_data_results = "results/data_and_graphs/VEC.pkl"
 # config.file_to_save_results_graph = "results/data_and_graphs/VEC.png"
 config.show_solution_score = False
@@ -26,7 +26,7 @@ config.use_GPU = True
 config.overwrite_existing_results_file = False
 config.randomise_random_seed = True
 config.save_model = False
-config.device = "cuda:1"
+config.device = "cuda:0"
 
 config.hyperparameters = {
     "DQN_Agents": {
@@ -84,8 +84,9 @@ config.hyperparameters = {
     }
 }
 
-num_vehicles = 40
+num_vehicles = 30
 count_file = "../blockchain/offloading_{}.txt".format(num_vehicles//5)
+count_file = "../blockchain/offloading30_{}.txt".format(5)
 num_episode = 10
 trials = 100
 action_type = ["random","greedy"]

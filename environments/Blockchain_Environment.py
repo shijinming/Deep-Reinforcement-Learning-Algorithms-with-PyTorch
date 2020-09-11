@@ -51,6 +51,8 @@ class Blockchain_Environment(gym.Env):
         self.id = "Offloading"
         self.count = [0,0,0,0]
         self.delay = [0,0,0,0]
+        self.choice = [0]*self.num_vehicles
+        self.price = [0]*self.num_vehicles
         self.count_file = "blockchain.txt"
         self.utility = 0
         self.vehicles = [] #vehicles in the range
@@ -74,10 +76,12 @@ class Blockchain_Environment(gym.Env):
             v["freq_remain"] = v["freq_init"]
             v["position"] = v["position_init"]
         with open(self.count_file,'a') as f:
-            f.write(str(self.utility)+' '+' '.join([str(i) for i in self.count])+' '
-            +' '.join([str(i) for i in self.delay])+' '+'\n')
+            f.write(str(self.utility)+' '+' '.join([str(i) for i in self.count])+' '+' '.join([str(i) for i in self.delay])+' '
+            +' '.join([str(i) for i in self.choice])+' '+' '.join([str(i) for i in self.price])+'\n')
         self.count = [0,0,0,0]
         self.delay = [0,0,0,0]
+        self.choice = [0]*self.num_vehicles
+        self.price = [0]*self.num_vehicles
         self.utility = 0
         task = self.tasks[0]
         self.s = {
@@ -122,16 +126,18 @@ class Blockchain_Environment(gym.Env):
         return reward
 
     def init_vehicles(self):
-        for _ in range(self.num_vehicles):
+        for i in range(self.num_vehicles):
             self.vehicle_count += 1
-            v_f = random.choice(self.vehicle_F)
+            # v_f = random.choice(self.vehicle_F)
+            v_f = (i%3)*2+3
             v_p = random.uniform(-self.maxR*0.9,self.maxR*0.9)
             v_v = np.random.normal(0, self.maxV/2)
             v_v = v_v if v_v!=0 else random.choice([-0.1, 0.1])
-            v_r = random.choice(range(1,11))/10
+            # v_r = random.choice(range(1,11))/10
+            v_r = (i%10+1)/10
             self.vehicles.append({"id":self.vehicle_count, "position":v_p, "position_init":v_p, "velocity":v_v, "reliability":v_r,
             "freq_init":v_f, "freq_remain":v_f, "task_num":0, "finish_task":[0]*100, "utility":[0]*100})
-            np.random.shuffle(self.vehicles)
+            # np.random.shuffle(self.vehicles)
 
     def add_vehicle(self):
         if len(self.vehicles) <= self.num_vehicles:
@@ -171,7 +177,7 @@ class Blockchain_Environment(gym.Env):
         if action_type=="greedy":
             v_id = np.argmax(self.s["freq_remain"])
             task = self.s["task"]
-            fraction = np.argmax([self.compute_utility(v_id*self.price_level+i, task)[0] for i in range(1,self.price_level)])
+            fraction = np.argmax([self.compute_utility(v_id*self.price_level+i, task, False)[0] for i in range(1,self.price_level)])
         action = v_id*self.price_level + fraction + 1
         return action
 
@@ -189,16 +195,16 @@ class Blockchain_Environment(gym.Env):
         fmin = 0.001
         fmax = min(F,np.sqrt(price/self.kappa))
         if fmin > fmax:
-            return 0
+            return 0.00001
         r = v["reliability"]
         f = lambda x:-r*np.log(1+max(task[2]-task[0]/rate-task[1]/x, 0.00001)) + (1-r)*self.kappa*x*x*task[1]
         try:
             alloc = fminbound(f, fmin, fmax)
         except:
-            return 0.001
+            return 0.00001
         return alloc
 
-    def compute_utility(self, action, task):
+    def compute_utility(self, action, task, is_count=True):
         is_finish = 0
         utility_n = 0
         v_id = action//self.price_level
@@ -208,13 +214,16 @@ class Blockchain_Environment(gym.Env):
         v = self.vehicles[v_id]
         rate = self.bandwidth*np.log2(1+self.s["snr"][v_id])
         price = (action%self.price_level+1)/self.price_level*np.log(1+task[2])/task[1]
+        self.choice[v_id]+=1
+        self.price[v_id]+=price
         freq_alloc = self.get_resouce_allocation(v, price, task, rate)
         t_total = task[0]/rate + task[1]/freq_alloc
         time_remain = max(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 0.00001)
         if t_total <=min(task[2], time_remain):
             utility = np.log(1+task[2]-t_total) - price*task[1]
-            self.count[int(np.log2(task[2]))+1] += 1
-            self.delay[int(np.log2(task[2]))+1] += t_total
+            if is_count:
+                self.count[int(np.log2(task[2]))+1] += 1
+                self.delay[int(np.log2(task[2]))+1] += t_total
             is_finish = 1
             utility_n = np.log(1+task[2]-t_total)/np.log(1+task[2])
         else:
