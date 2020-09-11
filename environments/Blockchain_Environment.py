@@ -25,7 +25,7 @@ class Blockchain_Environment(gym.Env):
         self.bandwidth = 10 # MHz
         self.snr_ref = 1 # reference SNR, which is used to compute rate by B*log2(1+snr_ref*d^-a) 
         self.snr_alpha = 2
-        self.vehicle_F = range(5,11)  #GHz
+        self.vehicle_F = range(3,8)  #GHz
         self.data_size = [0.2, 0.5] #MBytes
         self.comp_size = [0.2, 0.4] #GHz
         self.tau = [0.5, 1, 2, 4] #s
@@ -122,13 +122,13 @@ class Blockchain_Environment(gym.Env):
         return reward
 
     def init_vehicles(self):
-        for v in range(self.num_vehicles):
+        for _ in range(self.num_vehicles):
             self.vehicle_count += 1
-            v_f = (v%3+1)*2+3
+            v_f = random.choice(self.vehicle_F)
             v_p = random.uniform(-self.maxR*0.9,self.maxR*0.9)
             v_v = np.random.normal(0, self.maxV/2)
             v_v = v_v if v_v!=0 else random.choice([-0.1, 0.1])
-            v_r = (v%10+1)/10
+            v_r = random.choice(range(1,11))/10
             self.vehicles.append({"id":self.vehicle_count, "position":v_p, "position_init":v_p, "velocity":v_v, "reliability":v_r,
             "freq_init":v_f, "freq_remain":v_f, "task_num":0, "finish_task":[0]*100, "utility":[0]*100})
             np.random.shuffle(self.vehicles)
@@ -192,7 +192,10 @@ class Blockchain_Environment(gym.Env):
             return 0
         r = v["reliability"]
         f = lambda x:-r*np.log(1+max(task[2]-task[0]/rate-task[1]/x, 0.00001)) + (1-r)*self.kappa*x*x*task[1]
-        alloc = fminbound(f, fmin, fmax)
+        try:
+            alloc = fminbound(f, fmin, fmax)
+        except:
+            return 0
         return alloc
 
     def compute_utility(self, action, task):

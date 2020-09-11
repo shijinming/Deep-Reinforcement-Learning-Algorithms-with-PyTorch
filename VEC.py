@@ -14,7 +14,7 @@ import numpy as np
 config = Config()
 config.seed = 1
     
-config.num_episodes_to_run = 20000
+config.num_episodes_to_run = 8000
 # config.file_to_save_data_results = "results/data_and_graphs/VEC.pkl"
 # config.file_to_save_results_graph = "results/data_and_graphs/VEC.png"
 config.show_solution_score = False
@@ -84,7 +84,7 @@ config.hyperparameters = {
     }
 }
 
-num_vehicles = 30
+num_vehicles = 40
 count_file = "../blockchain/offloading_{}.txt".format(num_vehicles//5)
 num_episode = 10
 trials = 100
@@ -96,7 +96,7 @@ task_file = "../blockchain/tasks.txt"
 with open(count_file,'w+') as f:
     f.write("")
 for iter in range(1):
-    for group in [10]:
+    for group in range(1,11):
         print("num_vehicles=",num_vehicles)
         config.environment = Blockchain_Environment(num_vehicles=num_vehicles, task_num=task_num)
         config.environment.load_offloading_tasks(task_file, group)
