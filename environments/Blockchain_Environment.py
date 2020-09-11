@@ -195,7 +195,7 @@ class Blockchain_Environment(gym.Env):
         try:
             alloc = fminbound(f, fmin, fmax)
         except:
-            return 0
+            return 0.001
         return alloc
 
     def compute_utility(self, action, task):
