@@ -2,11 +2,11 @@ from environments.Blockchain_Environment import Blockchain_Environment
 import numpy as np
 
 
-action_type = ["random","greedy"]
+action_type = ["greedy"]
 task_num = 32
 task_file = "../blockchain/tasks.txt"
 
-for iter in range(200):
+for iter in range(500):
     print("iter =",iter)
     for num_vehicles in range(5,41,5):
         environment = Blockchain_Environment(num_vehicles=num_vehicles, task_num=task_num)
@@ -16,7 +16,7 @@ for iter in range(200):
             results = []
             rollings = []
             if i=="greedy":
-                num_episode = 5
+                num_episode = 2
                 environment.count_file = "../blockchain/greedy.txt"
             elif i=="random":
                 num_episode = 1000

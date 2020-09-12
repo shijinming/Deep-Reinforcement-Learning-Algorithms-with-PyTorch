@@ -52,7 +52,7 @@ class Blockchain_Environment(gym.Env):
         self.count = [0,0,0,0]
         self.delay = [0,0,0,0]
         self.choice = [0]*self.num_vehicles
-        self.price = [0]*self.num_vehicles
+        self.serv_reward = [0]*self.num_vehicles
         self.count_file = "blockchain.txt"
         self.utility = 0
         self.vehicles = [] #vehicles in the range
@@ -75,14 +75,6 @@ class Blockchain_Environment(gym.Env):
         for v in self.vehicles:
             v["freq_remain"] = v["freq_init"]
             v["position"] = v["position_init"]
-        with open(self.count_file,'a') as f:
-            f.write(str(self.utility)+' '+' '.join([str(i) for i in self.count])+' '+' '.join([str(i) for i in self.delay])+' '
-            +' '.join([str(i) for i in self.choice])+' '+' '.join([str(i) for i in self.price])+'\n')
-        self.count = [0,0,0,0]
-        self.delay = [0,0,0,0]
-        self.choice = [0]*self.num_vehicles
-        self.price = [0]*self.num_vehicles
-        self.utility = 0
         task = self.tasks[0]
         self.s = {
             "snr":np.array([min(self.snr_ref*(abs(v["position"])/200)**-2, 1) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
@@ -90,6 +82,17 @@ class Blockchain_Environment(gym.Env):
             "freq_remain":np.array([v["freq_remain"] for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
             "reliability":np.array([self.compute_reliability(v) for v in self.vehicles] + [0]*(self.max_v-self.num_vehicles)),
             "task":np.array(task)}
+
+        with open(self.count_file,'a') as f:
+            f.write(str(self.utility)+' '+' '.join([str(i) for i in self.count])+' '+' '.join([str(i) for i in self.delay])+' '
+            +' '.join([str(i) for i in self.choice])+' '+' '.join([str(i) for i in self.serv_reward])+' '
+            +' '.join([str(i) for i in self.s["reliability"][:self.num_vehicles]])+'\n')
+        self.count = [0,0,0,0]
+        self.delay = [0,0,0,0]
+        self.choice = [0]*self.num_vehicles
+        self.serv_reward = [0]*self.num_vehicles
+        self.utility = 0
+
         return spaces.flatten(self.observation_space, self.s)
 
     def step(self, action):
@@ -215,8 +218,8 @@ class Blockchain_Environment(gym.Env):
         rate = self.bandwidth*np.log2(1+self.s["snr"][v_id])
         price = (action%self.price_level+1)/self.price_level*np.log(1+task[2])/task[1]
         self.choice[v_id]+=1
-        self.price[v_id]+=price
         freq_alloc = self.get_resouce_allocation(v, price, task, rate)
+        self.serv_reward[v_id]+=(price*task[1]-self.kappa*freq_alloc*freq_alloc*task[1])
         t_total = task[0]/rate + task[1]/freq_alloc
         time_remain = max(-v["position"]/v["velocity"]+500/abs(v["velocity"]), 0.00001)
         if t_total <=min(task[2], time_remain):
@@ -347,11 +350,13 @@ class Consensus_Environment(gym.Env):
     def change_nodes(self, action):
         pass
             
-    def produce_action(self, action_type):
+    def produce_action(self, num_nodes, action_type):
         if action_type=="random":
-            action = 0
+            selection = np.random.choice(list(range(self.num_BS)),size=num_nodes,replace=False)
+            block_size = np.random.random()
         if action_type=="greedy":
-            action = 0
+            selection = np.argsort([n["freq_remain"] for n in self.nodes])[-num_nodes:]
+            block_size = np.random.random()
         return action
 
     def compute_utility(self, action):
@@ -373,5 +378,18 @@ class Consensus_Environment(gym.Env):
             utility = self.eps_1*self.nodes[action]["reliability"]+self.eps_2*self.batch_size
             utility = np.log(1 + self.delta*self.block_interval - delay) * utility
         else:
-            utility = -10*np.log(1+self.delta*self.block_interval)
+            utility = -20*np.log(1+self.delta*self.block_interval)
+        return utility, delay
+
+    def produce_utility(self, selection, block_size):
+        comp_p = self.batch_size*(self.comp_b+self.comp_c) + self.comp_a + (2*N+4*f)*self.comp_c
+        comp_r = self.batch_size*(self.comp_b+self.comp_c) + (2*N+4*f)*self.comp_c
+        freq_p = self.nodes[selection[-1]]["freq_remain"]
+        freq_r = min([self.nodes[i]["freq_remain"] for i in selection[:-1]])
+        T_d = 50*block_size/self.rate
+        T_v = max(comp_p/freq_p,comp_r/freq_r)
+        delay = T_d + T_v
+        utility = 0
+        for i in range(len(selection)):
+            utility += (self.eps_1*self.nodes[selection[i]]["reliability"]+self.eps_2*self.batch_size)*np.log(1 + self.delta*self.block_interval - delay)
         return utility, delay
