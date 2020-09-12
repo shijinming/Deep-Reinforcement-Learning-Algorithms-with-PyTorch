@@ -139,7 +139,7 @@ class Blockchain_Environment(gym.Env):
             # v_r = random.choice(range(1,11))/10
             v_r = (i%10+1)/10
             self.vehicles.append({"id":self.vehicle_count, "position":v_p, "position_init":v_p, "velocity":v_v, "reliability":v_r,
-            "freq_init":v_f, "freq_remain":v_f, "task_num":0, "finish_task":[0]*100, "utility":[0]*100})
+            "freq_init":v_f, "freq_remain":v_f, "task_num":0, "finish_task":[0.0]*1000, "utility":[0.0]*1000})
             # np.random.shuffle(self.vehicles)
 
     def add_vehicle(self):
@@ -151,7 +151,7 @@ class Blockchain_Environment(gym.Env):
             v_p = -self.maxR if v_v>0 else self.maxR
             v_r = min(max(0, np.random.normal(0.5,0.2)),1)
             self.vehicles.append({"id":self.vehicle_count, "position":v_p, "position_init":v_p, "velocity":v_v, "reliability":v_r,
-            "freq_init":v_f, "freq_remain":v_f, "task_num":0, "finish_task":[0]*100, "utility":[0]*100})
+            "freq_init":v_f, "freq_remain":v_f, "task_num":0, "finish_task":[0.0]*1000, "utility":[0.0]*1000})
 
     def move_vehicles(self):
         for i in range(len(self.vehicles)):
@@ -242,7 +242,7 @@ class Blockchain_Environment(gym.Env):
             average_u = 0
         else:
             average_u = sum(v["utility"][-num:])/sum(v["finish_task"][-num:])
-        return (average_u + average_r)/2
+        return 0.2*average_u + 0.8*average_r
 
 
 class Consensus_Environment(gym.Env):
@@ -353,11 +353,11 @@ class Consensus_Environment(gym.Env):
     def produce_action(self, num_nodes, action_type):
         if action_type=="random":
             selection = np.random.choice(list(range(self.num_BS)),size=num_nodes,replace=False)
-            block_size = np.random.random()
+            block_size = random.random()
         if action_type=="greedy":
             selection = np.argsort([n["freq_remain"] for n in self.nodes])[-num_nodes:]
-            block_size = np.random.random()
-        return action
+            block_size = random.random()
+        return selection, block_size
 
     def compute_utility(self, action):
         utility = 0
@@ -382,6 +382,8 @@ class Consensus_Environment(gym.Env):
         return utility, delay
 
     def produce_utility(self, selection, block_size):
+        N = self.num_cons_nodes
+        f = (N-1)//3
         comp_p = self.batch_size*(self.comp_b+self.comp_c) + self.comp_a + (2*N+4*f)*self.comp_c
         comp_r = self.batch_size*(self.comp_b+self.comp_c) + (2*N+4*f)*self.comp_c
         freq_p = self.nodes[selection[-1]]["freq_remain"]
