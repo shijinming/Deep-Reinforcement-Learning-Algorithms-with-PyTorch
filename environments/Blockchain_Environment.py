@@ -351,17 +351,18 @@ class Consensus_Environment(gym.Env):
     def change_nodes(self, action):
         pass
             
-    def produce_action(self, num_nodes, action_type):
+    def produce_action(self, action_type):
         if action_type=="random":
-            selection = np.random.choice(list(range(self.num_BS)),size=num_nodes,replace=False)
-            block_size = random.random()
-        elif action_type=="greedy_r":
-            selection = np.argsort([n["reliability"] for n in self.nodes])[-num_nodes:]
-            block_size = random.random()
-        elif action_type=="greedy_c":
-            selection = np.argsort([n["freq_remain"] for n in self.nodes])[-num_nodes:]
-            block_size = random.random()
-        return selection, block_size
+            selection = np.random.choice(list(range(self.num_BS)),size=self.num_cons_nodes,replace=False)
+            batch_size = random.random()
+        elif action_type=="greedy":
+            selection = np.argsort([n["freq_remain"] for n in self.nodes])[-self.num_cons_nodes:]
+            utility = []
+            for i in range(20):
+                batch_size = int((i+1)/20*self.trans_num)
+                utility.append(self.produce_utility(selection, batch_size))
+            batch_size = int((np.argmax(utility)+1)/20*self.trans_num)
+        return selection, batch_size
 
     def compute_utility(self, action):
         utility = 0
@@ -385,14 +386,14 @@ class Consensus_Environment(gym.Env):
             utility = -20*np.log(1+self.delta*self.block_interval)
         return utility, delay
 
-    def produce_utility(self, selection, block_size):
+    def produce_utility(self, selection, batch_size):
         N = self.num_cons_nodes
         f = (N-1)//3
-        comp_p = self.batch_size*(self.comp_b+self.comp_c) + self.comp_a + (2*N+4*f)*self.comp_c
-        comp_r = self.batch_size*(self.comp_b+self.comp_c) + (2*N+4*f)*self.comp_c
+        comp_p = batch_size*(self.comp_b+self.comp_c) + self.comp_a + (2*N+4*f)*self.comp_c
+        comp_r = batch_size*(self.comp_b+self.comp_c) + (2*N+4*f)*self.comp_c
         freq_p = self.nodes[selection[-1]]["freq_remain"]
         freq_r = min([self.nodes[i]["freq_remain"] for i in selection[:-1]])
-        T_d = 50*block_size/self.rate
+        T_d = 50*batch_size*self.trans_size/self.rate
         T_v = max(comp_p/freq_p,comp_r/freq_r)
         delay = T_d + T_v
         utility = 0
