@@ -3,8 +3,12 @@ import numpy as np
 
 
 action_type = ["random","greedy"]
-
+with open("../blockchain/consensus_greedy.txt",'w+') as f:
+    f.write("")
+with open("../blockchain/consensus_random.txt",'w+') as f:
+    f.write("")
 for num_cons_nodes in range(5,41,5):
+    print("num_cons_nodes=",num_cons_nodes)
     environment = Consensus_Environment(num_cons_nodes=num_cons_nodes)
     for i in action_type:
         results = []
@@ -19,9 +23,9 @@ for num_cons_nodes in range(5,41,5):
         for _ in range(num_episode):
             environment.reset()
             reward = 0
-            selection, batch_size = environment.produce_action(action_type)
+            selection, batch_size = environment.produce_action(i)
             reward, delay = environment.produce_utility(selection, batch_size)
             results.append(reward)
             with open(environment.count_file,'a') as f:
-                f.write(str(reward)+' '+str(delay)+' '+batch_size+'\n')
+                f.write(str(reward)+' '+str(delay)+' '+str(batch_size)+'\n')
         print("mean_reward=", np.mean(results),"max_reward=",max(results))
