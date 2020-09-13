@@ -296,10 +296,10 @@ class Consensus_Environment(gym.Env):
         self.next_state = None
         self.reward = None
         self.done = False
-        # with open(self.count_file,'a') as f:
-        #     f.write(str(self.utility/self.num_cons_nodes)+' '+str(max(self.consensus_delay+[0]))+' '
-        #     +str(self.batch_size*self.trans_size)+' '+' '.join([str(self.nodes[b]["freq_remain"]) for b in self.actions[1:]])+' '
-        #     +' '.join([str(self.nodes[b]["reliability"]) for b in self.actions[1:]])+'\n')
+        with open(self.count_file,'a') as f:
+            f.write(str(self.utility)+' '+str(max(self.consensus_delay+[0]))+' '
+            +str(self.batch_size)+' '+' '.join([str(self.nodes[b]["freq_remain"]) for b in self.actions[1:]])+' '
+            +' '.join([str(self.nodes[b]["reliability"]) for b in self.actions[1:]])+'\n')
         self.actions=[]
         self.utility = 0
         self.consensus_delay = []

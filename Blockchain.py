@@ -85,7 +85,7 @@ config.hyperparameters = {
 }
 
 
-num_cons_nodes = 40
+num_cons_nodes = 5
 count_file = "../blockchain/consensus_{}.txt".format(num_cons_nodes//5)
 num_episode = 10
 trials = 100
