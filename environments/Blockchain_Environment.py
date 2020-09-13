@@ -262,7 +262,7 @@ class Consensus_Environment(gym.Env):
         self.block_interval = 5
         self.delta = 1.6
         self.xi = 0.02
-        self.eps_1 = 0.1
+        self.eps_1 = 1
         self.eps_2 = 0.001
         self.comp_a = 0.002
         self.comp_b = 0.008
@@ -281,7 +281,7 @@ class Consensus_Environment(gym.Env):
         self._max_episode_steps = 100
         self.step_num_per_episode = self.num_cons_nodes + 1
         self.id = "Consensus"
-        self.consensus_delay = 0
+        self.consensus_delay = []
         self.count_file = "consensus.txt"
         self.utility = 0
         self.init_nodes()
@@ -297,11 +297,12 @@ class Consensus_Environment(gym.Env):
         self.reward = None
         self.done = False
         with open(self.count_file,'a') as f:
-            # f.write(str(self.utility/self.step_num_per_episode)+' '+str(self.consensus_delay/self.step_num_per_episode)+' '+'\n')
-            f.write(' '.join([str(i) for i in self.actions])+'\n')
+            f.write(str(self.utility/self.num_cons_nodes)+' '+str(max(self.consensus_delay+[0]))+' '
+            +str(self.batch_size*self.trans_size)+' '+' '.join([str(self.nodes[b]["freq_remain"]) for b in self.actions[1:]])+' '
+            +' '.join([str(self.nodes[b]["reliability"]) for b in self.actions[1:]])+'\n')
         self.actions=[]
         self.utility = 0
-        self.consensus_delay = 0
+        self.consensus_delay = []
         self.init_nodes()
         self.s = {
             "freq_remain":np.array([b["freq_remain"] for b in self.nodes]),
@@ -331,7 +332,7 @@ class Consensus_Environment(gym.Env):
             self.batch_size = int((action+1)/self.num_BS*self.trans_num)
         else:
             reward, delay = self.compute_utility(action)
-            self.consensus_delay += delay
+            self.consensus_delay.append(delay)
             self.nodes[action]["freq_remain"] = 0
         return reward
 
@@ -341,10 +342,10 @@ class Consensus_Environment(gym.Env):
         for _ in range(self.num_BS):
             self.BS_count += 1
             freq = random.choice(self.BS_F)
-            num_vehicles = max(0,int(np.random.normal(90,30)))
+            num_vehicles = np.random.choice(range(30,150))
             self.trans_num+=int(num_vehicles*self.trans_factor)
             freq_r=max(0,freq-self.rho*num_vehicles)
-            r = min(max(0,np.random.normal(0.5, 0.2)),1)
+            r = np.random.choice(range(10,90))/100
             self.nodes.append({"id":self.BS_count, "freq_init":freq, "freq_remain":freq_r, "reliability":r})
 
     def change_nodes(self, action):
@@ -354,7 +355,10 @@ class Consensus_Environment(gym.Env):
         if action_type=="random":
             selection = np.random.choice(list(range(self.num_BS)),size=num_nodes,replace=False)
             block_size = random.random()
-        if action_type=="greedy":
+        elif action_type=="greedy_r":
+            selection = np.argsort([n["reliability"] for n in self.nodes])[-num_nodes:]
+            block_size = random.random()
+        elif action_type=="greedy_c":
             selection = np.argsort([n["freq_remain"] for n in self.nodes])[-num_nodes:]
             block_size = random.random()
         return selection, block_size

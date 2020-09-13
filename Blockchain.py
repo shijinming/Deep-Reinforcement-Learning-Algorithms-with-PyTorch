@@ -85,7 +85,7 @@ config.hyperparameters = {
 }
 
 
-num_cons_nodes = 40
+num_cons_nodes = 20
 count_file = "../blockchain/consensus_{}.txt".format(num_cons_nodes//5)
 num_episode = 10
 trials = 100
@@ -93,7 +93,7 @@ action_type = ["random","greedy"]
 with open(count_file,'w+') as f:
     f.write("")
 for iter in range(1):
-    for group in range(1,11):
+    for group in range(1):
         print("num_cons_nodes=",num_cons_nodes)
         config.environment = Consensus_Environment(num_cons_nodes=num_cons_nodes)
         config.environment.count_file = count_file
