@@ -2,21 +2,21 @@ from environments.Blockchain_Environment import Consensus_Environment
 import numpy as np
 
 
-action_type = ["random","greedy"]
+action_type = ["greedy","random"]
 with open("../blockchain/consensus_greedy.txt",'w+') as f:
     f.write("")
 with open("../blockchain/consensus_random.txt",'w+') as f:
     f.write("")
-for num_cons_nodes in range(5,41,5):
+for num_cons_nodes in range(6,31,3):
     print("num_cons_nodes=",num_cons_nodes)
     environment = Consensus_Environment(num_cons_nodes=num_cons_nodes)
     for i in action_type:
         results = []
         if i=="greedy":
-            num_episode = 20000
+            num_episode = 10000
             environment.count_file = "../blockchain/consensus_greedy.txt"
         elif i=="random":
-            num_episode = 20000
+            num_episode = 10000
             environment.count_file = "../blockchain/consensus_random.txt"
         with open(environment.count_file,'a') as f:
             f.write('num_cons_nodes='+str(num_cons_nodes)+'\n')

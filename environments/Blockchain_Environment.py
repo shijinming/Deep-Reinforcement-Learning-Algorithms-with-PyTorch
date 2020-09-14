@@ -254,16 +254,16 @@ class Consensus_Environment(gym.Env):
         self.BS_count = 0
         self.rate = 12.5 # MB/s
         self.BS_F = range(20,30)  #GHz
-        self.rho = 0.1
+        self.rho = 0.15
         self.trans_num = 0
         self.batch_size = 0
         self.trans_size = 0.002
-        self.trans_factor = 1
+        self.trans_factor = 0.25
         self.block_interval = 5
-        self.delta = 1.6
+        self.delta = 2
         self.xi = 0.02
-        self.eps_1 = 0.5
-        self.eps_2 = 0.001
+        self.eps_1 = 1
+        self.eps_2 = 0.002
         self.comp_a = 0.002
         self.comp_b = 0.008
         self.comp_c = 0.0005
@@ -352,16 +352,16 @@ class Consensus_Environment(gym.Env):
         pass
             
     def produce_action(self, action_type):
+        utility=[]
         if action_type=="random":
             selection = np.random.choice(list(range(self.num_BS)),size=self.num_cons_nodes,replace=False)
-            batch_size = int(random.random()*self.trans_num)
+            # batch_size = int(random.random()*self.trans_num)
         elif action_type=="greedy":
             selection = np.argsort([n["freq_remain"] for n in self.nodes])[-self.num_cons_nodes:]
-            utility = []
-            for i in range(20):
-                batch_size = int((i+1)/20*self.trans_num)
-                utility.append(self.produce_utility(selection, batch_size)[0])
-            batch_size = int((np.argmax(utility)+1)/20*self.trans_num)
+        for i in range(50):
+            batch_size = int((i+1)/50*self.trans_num)
+            utility.append(self.produce_utility(selection, batch_size)[0])
+        batch_size = int((np.argmax(utility)+1)/50*self.trans_num)
         return selection, batch_size
 
     def compute_utility(self, action):
@@ -393,6 +393,8 @@ class Consensus_Environment(gym.Env):
         comp_r = batch_size*(self.comp_b+self.comp_c) + (2*N+4*f)*self.comp_c
         freq_p = self.nodes[selection[-1]]["freq_remain"]
         freq_r = min([self.nodes[i]["freq_remain"] for i in selection[:-1]])
+        if freq_r==0 or freq_p==0:
+            return -1,-1
         T_d = 50*batch_size*self.trans_size/self.rate
         T_v = max(comp_p/freq_p,comp_r/freq_r)
         delay = T_d + T_v
@@ -400,5 +402,11 @@ class Consensus_Environment(gym.Env):
             return -1, -1
         utility = 0
         for i in range(len(selection)):
-            utility += (self.eps_1*self.nodes[selection[i]]["reliability"]+self.eps_2*self.batch_size)*np.log(1 + self.delta*self.block_interval - delay)
+            if i==len(selection)-1:
+                delay1 = comp_p/freq_p + T_d
+            else:
+                delay1 = comp_r/self.nodes[selection[i]]["freq_remain"] + T_d
+            if delay1 > self.delta*self.block_interval:
+                return -1, -1
+            utility += (self.eps_1*self.nodes[selection[i]]["reliability"]+self.eps_2*batch_size)*np.log(1 + self.delta*self.block_interval - delay1)
         return utility, delay
