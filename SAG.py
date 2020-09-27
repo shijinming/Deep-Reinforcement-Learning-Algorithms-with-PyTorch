@@ -86,7 +86,7 @@ config.hyperparameters = {
 
 num_vehicles = 30
 # count_file = "../blockchain/offloading_{}.txt".format(num_vehicles//5)
-count_file = "../blockchain/offloading30_{}.txt".format(1)
+count_file = "../sag/offloading30_{}.txt".format(1)
 num_episode = 10
 trials = 100
 action_type = ["random","greedy"]
