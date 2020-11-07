@@ -9,7 +9,9 @@
 
 This repository contains PyTorch implementations of deep reinforcement learning algorithms and environments. 
 
-## **Algorithms Implemented** 
+(To help you remember things you learn about machine learning in general write them in [Save All](https://www.saveall.ai) and try out the public deck there about Fast AI's machine learning textbook.)
+
+## **Algorithms Implemented**  
 
 1. *Deep Q Learning (DQN)* <sub><sup> ([Mnih et al. 2013](https://arxiv.org/pdf/1312.5602.pdf)) </sup></sub>  
 1. *DQN with Fixed Q Targets* <sub><sup> ([Mnih et al. 2013](https://arxiv.org/pdf/1312.5602.pdf)) </sup></sub>
@@ -110,7 +112,7 @@ conda activate myenvname
 
 pip3 install -r requirements.txt
 
-python Results/Cart_Pole.py
+python results/Cart_Pole.py
 ``` 
 
 For other games change the last line to one of the other files in the Results folder. 
