@@ -85,7 +85,7 @@ config.hyperparameters = {
 }
 
 num_vehicles = 35
-count_file = "../sac/ddqn1_vehicle_{}.txt".format(num_vehicles//5)
+count_file = "../../../ddqn1_vehicle_{}.txt".format(num_vehicles//5)
 num_episode = 10
 trials = 100
 action_type = ["random","greedy"]
