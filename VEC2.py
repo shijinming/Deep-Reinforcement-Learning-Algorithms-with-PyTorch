@@ -66,7 +66,7 @@ config.hyperparameters = {
             "gradient_clipping_norm": 5
         },
 
-        "min_steps_before_learning": 5000,
+        "min_steps_before_learning": 100,
         "batch_size": 256,
         "discount_rate": 0.99,
         "mu": 0.0, #for O-H noise
@@ -84,8 +84,7 @@ config.hyperparameters = {
     }
 }
 
-num_vehicles = 25
-count_file = "../sac/sac_re{}.txt".format(num_vehicles//5)
+num_vehicles = 30
 num_episode = 10
 trials = 100
 action_type = ["random","greedy"]
@@ -93,14 +92,20 @@ task_num = 32
 task_file = "../sac/tasks.txt"
 # config.environment = VEC_Environment(num_vehicles=50, task_num=task_num)
 # config.environment.generate_change_tasks("../change_tasks.txt", 8)
-with open(count_file,'w+') as f:
-    f.write("")
-for iter in range(1):
-    for group in range(1,11):
+# with open(count_file,'w+') as f:
+#     f.write("")
+
+config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
+config.environment.load_offloading_tasks(task_file, 3)
+for iter in [5]:
+    count_file = "../../../learningrate_{}.txt".format(iter)
+    with open(count_file,'w+') as f:
+        f.write("")
+    config.environment.count_file = count_file
+    for learning_rate in [0.00002, 0.00008,0.0002,0.0008,0.002,0.008]:
         print("num_vehicles=",num_vehicles)
-        config.environment = VEC_Environment(num_vehicles=num_vehicles, task_num=task_num)
-        config.environment.load_offloading_tasks(task_file, group)
-        config.environment.count_file = count_file
+        config.hyperparameters["Actor_Critic_Agents"]["Actor"]["learning_rate"]=learning_rate
+        config.hyperparameters["Actor_Critic_Agents"]["Critic"]["learning_rate"]=learning_rate
         # for i in action_type:
         #     print(i)
         #     with open("../finish_count.txt",'a') as f:
