@@ -26,7 +26,7 @@ config.use_GPU = True
 config.overwrite_existing_results_file = False
 config.randomise_random_seed = True
 config.save_model = False
-config.device = "cuda:0"
+config.device = "cuda:1"
 
 config.hyperparameters = {
     "DQN_Agents": {
@@ -84,43 +84,67 @@ config.hyperparameters = {
     }
 }
 
-num_vehicles = 30
-# count_file = "../blockchain/offloading_{}.txt".format(num_vehicles//5)
-count_file = "../blockchain/offloading30_{}.txt".format(1)
-num_episode = 10
-trials = 100
-action_type = ["random","greedy"]
+# num_vehicles = 20
+# # count_file = "../blockchain/offloading_{}.txt".format(num_vehicles//5)
+# count_file = "../blockchain/learning_rate20_{}.txt".format(1)
+# num_episode = 10
+# trials = 100
+# action_type = ["random","greedy"]
+# task_num = 32
+# task_file = "../blockchain/tasks.txt"
+# # config.environment = Blockchain_Environment(num_vehicles=50, task_num=task_num)
+# # config.environment.generate_offload_tasks(task_file, 10)
+# with open(count_file,'w+') as f:
+#     f.write("")
+# for iter in range(1):
+#     for group in range(1,11):
+#         print("num_vehicles=",num_vehicles)
+#         config.environment = Blockchain_Environment(num_vehicles=num_vehicles, task_num=task_num)
+#         config.environment.load_offloading_tasks(task_file, group)
+#         config.environment.count_file = count_file
+#         # for i in action_type:
+#         #     print(i)
+#         #     with open("../finish_count.txt",'a') as f:
+#         #         f.write(i+'\n')
+#         #     results = []
+#         #     rollings = []
+#         #     if i=="greedy":
+#         #         num_episode = 5
+#         #     elif i=="random":
+#         #         num_episode = 1000
+#         #     for _ in range(num_episode):
+#         #         config.environment.reset()
+#         #         reward = 0
+#         #         for _ in range(task_num):
+#         #             _,r,_,_=config.environment.step(config.environment.produce_action(i))
+#         #             reward+=r
+#         #         results.append(reward)
+#         #         rollings.append(np.mean(results[-trials:]))
+#         #     print("mean_reward=", np.mean(results),"max_reward=",max(results))
+#         with open(count_file,'a') as f:
+#             f.write("num_vehicles="+str(num_vehicles)+'\n')
+#         AGENTS = [SAC_Discrete] 
+#         trainer = Trainer(config, AGENTS)
+#         trainer.run_games_for_agents()
+#         print(config.hyperparameters["Actor_Critic_Agents"])
+
+
+
+num_vehicles = 20
 task_num = 32
 task_file = "../blockchain/tasks.txt"
-config.environment = Blockchain_Environment(num_vehicles=50, task_num=task_num)
-config.environment.generate_offload_tasks(task_file, 10)
-with open(count_file,'w+') as f:
-    f.write("")
-for iter in range(1):
-    for group in range(1,11):
+config.environment = Blockchain_Environment(num_vehicles=num_vehicles, task_num=task_num)
+config.environment.load_offloading_tasks(task_file, 3)
+for iter in [5]:
+    count_file = "../blockchain/learningrate20_{}.txt".format(iter)
+    with open(count_file,'w+') as f:
+        f.write("")
+    config.environment.count_file = count_file
+    for learning_rate in [0.00002, 0.00008,0.0002,0.0008,0.002,0.008]:
         print("num_vehicles=",num_vehicles)
-        config.environment = Blockchain_Environment(num_vehicles=num_vehicles, task_num=task_num)
-        config.environment.load_offloading_tasks(task_file, group)
-        config.environment.count_file = count_file
-        # for i in action_type:
-        #     print(i)
-        #     with open("../finish_count.txt",'a') as f:
-        #         f.write(i+'\n')
-        #     results = []
-        #     rollings = []
-        #     if i=="greedy":
-        #         num_episode = 5
-        #     elif i=="random":
-        #         num_episode = 1000
-        #     for _ in range(num_episode):
-        #         config.environment.reset()
-        #         reward = 0
-        #         for _ in range(task_num):
-        #             _,r,_,_=config.environment.step(config.environment.produce_action(i))
-        #             reward+=r
-        #         results.append(reward)
-        #         rollings.append(np.mean(results[-trials:]))
-        #     print("mean_reward=", np.mean(results),"max_reward=",max(results))
+        config.hyperparameters["Actor_Critic_Agents"]["Actor"]["learning_rate"]=learning_rate
+        config.hyperparameters["Actor_Critic_Agents"]["Critic"]["learning_rate"]=learning_rate
+
         with open(count_file,'a') as f:
             f.write("num_vehicles="+str(num_vehicles)+'\n')
         AGENTS = [SAC_Discrete] 
