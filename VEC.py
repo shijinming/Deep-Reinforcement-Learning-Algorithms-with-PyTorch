@@ -136,11 +136,11 @@ task_file = "../blockchain/tasks.txt"
 config.environment = Blockchain_Environment(num_vehicles=num_vehicles, task_num=task_num)
 config.environment.load_offloading_tasks(task_file, 3)
 for iter in [5]:
-    count_file = "../blockchain/learningrate20_{}.txt".format(iter)
+    count_file = "../blockchain/learningrate20_1_{}.txt".format(iter)
     with open(count_file,'w+') as f:
         f.write("")
     config.environment.count_file = count_file
-    for learning_rate in [0.00002, 0.00008,0.0002,0.0008,0.002,0.008]:
+    for learning_rate in [0.001]:
         print("num_vehicles=",num_vehicles)
         config.hyperparameters["Actor_Critic_Agents"]["Actor"]["learning_rate"]=learning_rate
         config.hyperparameters["Actor_Critic_Agents"]["Critic"]["learning_rate"]=learning_rate
